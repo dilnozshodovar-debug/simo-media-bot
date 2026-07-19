@@ -13,7 +13,8 @@ SIMO.MEDIA — Telegram bot (нусхаи такмилёфта v3)
 import os
 import logging
 import random
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from pathlib import Path
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -44,9 +45,16 @@ TELEGRAM_USERNAME = "@editor2202"
 TELEGRAM_LINK = "https://t.me/editor2202"
 INSTAGRAM_LINK = "https://www.instagram.com/iam_shodovar?igsh=Z3g1NHhrOXM5NGdl"
 
-# Акси муқаддима (banner). Метавонед бо URL-и худ иваз кунед,
-# ё бо file_id-и акси боркардаи худ.
-WELCOME_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80"
+# Акси муқаддима (banner) — логотипи худи SIMO.MEDIA.
+# Файли logo.png бояд дар ҳамон папкае бошад, ки bot.py ҷойгир аст (на дар зерпапка).
+WELCOME_IMAGE_PATH = Path(__file__).parent / "logo.png"
+
+# Расмҳои намунавӣ (акси касбии сифатнок) — метавонед бо акси воқеии кори худ иваз кунед
+PORTFOLIO_PREVIEW_IMAGES = [
+    "https://images.unsplash.com/photo-1519741497674-611481863552?w=1000&q=80",
+    "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1000&q=80",
+    "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1000&q=80",
+]
 
 PORTFOLIO_LINKS = [
     ("🎬 Намунаи клип — Reel", "https://www.instagram.com/reel/DYJFY9MoYnJ/?igsh=MWc4ZHNua2xyMzdkaw=="),
@@ -81,6 +89,7 @@ WELCOME_TEXT = (
     "Хуш омадед! 🤍\n\n"
     "Рӯзи арӯсӣ танҳо як бор такрор мешавад. Мо ҳар табассум, ҳар ашки шодӣ ва "
     "ҳар лаҳзаи зебои ин рӯзи фаромӯшнашавандаро бо сифати баланд сабт мекунем.\n\n"
+    "🏆 Садҳо мизоҷи хушбахт — эътимоди онҳо натиҷаи кори мост.\n\n"
     "👇 <b>Лутфан аз менюи поён интихоб кунед:</b>"
 )
 
@@ -167,10 +176,11 @@ PACKAGES = {
         ),
     },
     "vip": {
-        "title": "👑 VIP — 2000 сомонӣ",
+        "title": "🏆 VIP — 2000 сомонӣ",
         "short": "VIP (2000 сомонӣ)",
         "text": (
-            "👑 <b>VIP — 2000 сомонӣ</b>\n"
+            "🏆 <b>VIP — 2000 сомонӣ</b>\n"
+            "<i>🔥 Пешниҳоди маъмултарин дар байни мизоҷони мо</i>\n"
             "━━━━━━━━━━━━━━━━━━\n\n"
             "Сифати бештар, хотираҳои бештар.\n\n"
             "Ба пакет дохил мешавад:\n"
@@ -231,7 +241,7 @@ def main_menu_kb():
 def prices_menu_kb():
     kb = [
         [InlineKeyboardButton("🎥 STANDARD — 1500 сомонӣ", callback_data="pkg_standard")],
-        [InlineKeyboardButton("👑 VIP — 2000 сомонӣ", callback_data="pkg_vip")],
+        [InlineKeyboardButton("🏆 VIP — 2000 сомонӣ (маъмултарин)", callback_data="pkg_vip")],
         [InlineKeyboardButton("💎 VIP PREMIUM — 3000 сомонӣ", callback_data="pkg_vip_premium")],
         [InlineKeyboardButton("⬅️ Бозгашт", callback_data="menu_main")],
     ]
@@ -315,12 +325,13 @@ def review_render(index: int) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        await update.message.reply_photo(
-            photo=WELCOME_IMAGE_URL,
-            caption=WELCOME_TEXT,
-            reply_markup=main_menu_kb(),
-            parse_mode="HTML",
-        )
+        with open(WELCOME_IMAGE_PATH, "rb") as photo_file:
+            await update.message.reply_photo(
+                photo=photo_file,
+                caption=WELCOME_TEXT,
+                reply_markup=main_menu_kb(),
+                parse_mode="HTML",
+            )
     except Exception as e:
         logger.warning(f"Акс фиристода нашуд: {e}")
         await update.message.reply_text(WELCOME_TEXT, reply_markup=main_menu_kb(), parse_mode="HTML")
@@ -362,11 +373,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit(query, ABOUT_TEXT, back_to_main_kb())
 
     elif data == "menu_portfolio":
-        await safe_edit(
-            query,
-            "🎬 <b>ПОРТФОЛИО</b>\n━━━━━━━━━━━━━━━━━━\n\nНамунаи баъзе корҳои мо дар поён 👇\n\n"
-            "📷 Барои намунаи бештари корҳои мо, лутфан ба саҳифаи Instagram-и мо гузаред.",
-            portfolio_kb(),
+        try:
+            media = [InputMediaPhoto(url) for url in PORTFOLIO_PREVIEW_IMAGES]
+            await context.bot.send_media_group(chat_id=query.message.chat_id, media=media)
+        except Exception as e:
+            logger.warning(f"Галерея фиристода нашуд: {e}")
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=(
+                "🎬 <b>ПОРТФОЛИО</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
+                "Намунаи сифати кори мо дар боло 👆\n\n"
+                "📷 Барои намунаи бештари корҳои мо (видео ва клипҳо), лутфан ба саҳифаи "
+                "Instagram-и мо гузаред 👇"
+            ),
+            reply_markup=portfolio_kb(),
+            parse_mode="HTML",
         )
 
     elif data == "menu_contact":
