@@ -49,7 +49,7 @@ TELEGRAM_USERNAME = "@editor2202"
 TELEGRAM_LINK = "https://t.me/editor2202"
 INSTAGRAM_LINK = "https://www.instagram.com/iam_shodovar?igsh=Z3g1NHhrOXM5NGdl"
 
-WELCOME_IMAGE_URL = "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80"
+WELCOME_IMAGE_URL = "https://raw.githubusercontent.com/dilnozshodovar-debug/simo-media-bot/main/logo.png"
 
 PORTFOLIO_LINKS = [
     ("🎬 Намунаи клип — Reel", "https://www.instagram.com/reel/DYJFY9MoYnJ/?igsh=MWc4ZHNua2xyMzdkaw=="),
