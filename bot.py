@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбӣ v4)
-Ду забон (Тоҷикӣ/Русӣ), санҷиши рақами телефон, идоракунии хатогиҳо,
-соатҳои корӣ, банер, оморҳо, тавсифҳо, тасдиқи фармоиш бо рақами беназир.
+SIMO.MEDIA — Telegram bot (нусхаи касбӣ v5)
+Ду забон, санҷиши вуруд, идоракунии хатогиҳо, соатҳои корӣ, банер, оморҳо,
+тавсифҳо, тасдиқи фармоиш, санҷиши дастрасии сана, пайгирии фармоиш,
+ёдоварии худкор, паёми умумӣ ба мизоҷон, даъвати дӯстон.
 
 Барои иҷро:
 1) pip install -r requirements.txt
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8864413053:AAFSNnOT6SgRsp3zD16fEMR_BsqBhiloim4")
 ADMIN_IDS = [8336737421]
+BOT_USERNAME = "simoo129_bot"
 
 CONTACT_PHONE_DISPLAY = "+992 93 882 97 96"
 CONTACT_PHONE_RAW = "992938829796"
@@ -66,10 +68,11 @@ REVIEWS = [
      "ru": "Съёмка с дрона по-настоящему оживила моменты. Рекомендую!"},
 ]
 
-# Соатҳои корӣ (вақти Душанбе, UTC+5)
 WORK_START_HOUR = 9
 WORK_END_HOUR = 20
 DUSHANBE_TZ = timezone(timedelta(hours=5))
+REMINDER_HOURS = 24
+REFERRAL_DISCOUNT_PERCENT = 5
 
 # ==================== МАТНҲО (ду забон) ====================
 
@@ -78,7 +81,9 @@ BTN = {
         "urgent": "🔥 Фармоиши фаврӣ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
         "reviews": "⭐ Тавсифҳо", "stats": "📊 Дар рақамҳо", "why": "✨ Чаро маҳз мо?",
         "faq": "❓ FAQ", "about": "ℹ️ Дар бораи мо", "contact": "📞 Тамос",
-        "lang": "🇷🇺 На русском", "back": "⬅️ Ба меню асосӣ", "back_prices": "⬅️ Ба прайс-лист",
+        "availability": "📅 Санҷиши сана", "track": "📋 Пайгирии фармоиш",
+        "referral": "🎁 Даъвати дӯстон", "lang": "🇷🇺 На русском",
+        "back": "⬅️ Ба меню асосӣ", "back_prices": "⬅️ Ба прайс-лист",
         "order": "✅ Ин пакетро фармоиш медиҳам", "confirm": "✅ Тасдиқ ва фиристодан",
         "restart": "✏️ Аз нав пур кардан", "prev": "⬅️ Қаблӣ", "next": "Баъдӣ ➡️",
         "whatsapp": "💬 WhatsApp", "telegram": "✈️ Telegram", "instagram": "📷 Instagram",
@@ -87,7 +92,9 @@ BTN = {
         "urgent": "🔥 Быстрый заказ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
         "reviews": "⭐ Отзывы", "stats": "📊 В цифрах", "why": "✨ Почему мы?",
         "faq": "❓ FAQ", "about": "ℹ️ О нас", "contact": "📞 Контакты",
-        "lang": "🇹🇯 Тоҷикӣ", "back": "⬅️ Главное меню", "back_prices": "⬅️ К прайс-листу",
+        "availability": "📅 Проверить дату", "track": "📋 Отследить заказ",
+        "referral": "🎁 Пригласить друзей", "lang": "🇹🇯 Тоҷикӣ",
+        "back": "⬅️ Главное меню", "back_prices": "⬅️ К прайс-листу",
         "order": "✅ Заказать этот пакет", "confirm": "✅ Подтвердить и отправить",
         "restart": "✏️ Заполнить заново", "prev": "⬅️ Пред.", "next": "След. ➡️",
         "whatsapp": "💬 WhatsApp", "telegram": "✈️ Telegram", "instagram": "📷 Instagram",
@@ -253,9 +260,43 @@ TEXT = {
         "ru": (f"\n\n⏰ <i>Внимание: сейчас нерабочее время ({WORK_START_HOUR}:00–{WORK_END_HOUR}:00). "
                "Наш сотрудник свяжется с вами позже.</i>"),
     },
+    "referral_note": {
+        "tj": f"\n\n🎁 <i>Ин мизоҷ тавассути даъвати дӯст омадааст — {REFERRAL_DISCOUNT_PERCENT}% тахфифро дар назар гиред.</i>",
+        "ru": f"\n\n🎁 <i>Клиент пришёл по приглашению друга — учтите скидку {REFERRAL_DISCOUNT_PERCENT}%.</i>",
+    },
     "error_generic": {
         "tj": "⚠️ Мутаассифона хатогӣ рух дод. Лутфан аз нав кӯшиш кунед ё /start-ро занед.",
         "ru": "⚠️ Произошла ошибка. Пожалуйста, попробуйте снова или нажмите /start.",
+    },
+    "ask_avail_date": {
+        "tj": "📅 <b>Санҷиши дастрасии сана</b>\n━━━━━━━━━━━━━━━━━━\n\nЛутфан санаи мавриди назарро нависед (масалан 15.08.2026):",
+        "ru": "📅 <b>Проверка доступности даты</b>\n━━━━━━━━━━━━━━━━━━\n\nПожалуйста, напишите интересующую дату (например 15.08.2026):",
+    },
+    "date_available": {
+        "tj": "✅ <b>Хушхабар!</b> Санаи {date} ҳоло озод аст.\n\nМетавонед ҳозир фармоиш диҳед, то ҷояшро мустаҳкам кунед 👇",
+        "ru": "✅ <b>Отличная новость!</b> Дата {date} свободна.\n\nМожете оформить заказ прямо сейчас 👇",
+    },
+    "date_taken": {
+        "tj": "⚠️ Мутаассифона, санаи {date} аллакай банд аст.\n\nЛутфан бо мо тамос гиред то санаҳои алтернативиро муҳокима кунем.",
+        "ru": "⚠️ К сожалению, дата {date} уже занята.\n\nСвяжитесь с нами, чтобы обсудить альтернативные даты.",
+    },
+    "ask_track_number": {
+        "tj": "📋 <b>Пайгирии фармоиш</b>\n━━━━━━━━━━━━━━━━━━\n\nЛутфан рақами фармоиши худро нависед (масалан SM-4821):",
+        "ru": "📋 <b>Отслеживание заказа</b>\n━━━━━━━━━━━━━━━━━━\n\nПожалуйста, напишите номер вашего заказа (например SM-4821):",
+    },
+    "track_not_found": {
+        "tj": "❌ Фармоише бо ин рақам ёфт нашуд. Лутфан рақамро санҷед ва дубора кӯшиш кунед.",
+        "ru": "❌ Заказ с таким номером не найден. Проверьте номер и попробуйте снова.",
+    },
+    "referral_text": {
+        "tj": ("🎁 <b>ДӮСТОНРО ДАЪВАТ КУНЕД</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               f"Линки шахсии худро ба дӯстонатон фиристед — агар онҳо тавассути ин линк фармоиш диҳанд, "
+               f"шумо {REFERRAL_DISCOUNT_PERCENT}% тахфиф мегиред!\n\n🔗 <code>{{link}}</code>\n\n"
+               "Линкро нусхабардорӣ карда, ба дӯстони худ фиристед 👆"),
+        "ru": ("🎁 <b>ПРИГЛАСИТЕ ДРУЗЕЙ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               f"Отправьте свою персональную ссылку друзьям — если они закажут по этой ссылке, "
+               f"вы получите скидку {REFERRAL_DISCOUNT_PERCENT}%!\n\n🔗 <code>{{link}}</code>\n\n"
+               "Скопируйте ссылку и отправьте друзьям 👆"),
     },
 }
 
@@ -311,9 +352,6 @@ PACKAGES = {
 
 ASK_NAME, ASK_PHONE, ASK_DATE, CONFIRM = range(4)
 
-# Мукобилаи (admin_id, message_id) -> client_chat_id барои ҷавоб додан ба мизоҷ
-ADMIN_REPLY_MAP = {}
-
 # ==================== ФУНКСИЯҲОИ КӮМАКӣ ====================
 
 def get_lang(context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -334,8 +372,22 @@ def validate_phone(text: str) -> bool:
     return 7 <= len(digits) <= 15
 
 
+def normalize_date(text: str):
+    m = re.match(r"^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$", text.strip())
+    if not m:
+        return None
+    day, month, year = m.groups()
+    if len(year) == 2:
+        year = "20" + year
+    try:
+        d = datetime(int(year), int(month), int(day))
+    except ValueError:
+        return None
+    return d.strftime("%d.%m.%Y")
+
+
 def validate_date(text: str) -> bool:
-    return bool(re.match(r"^\d{1,2}[./]\d{1,2}[./]\d{2,4}$", text.strip()))
+    return normalize_date(text) is not None
 
 
 # ==================== КЛАВИАТУРАҲО ====================
@@ -346,11 +398,14 @@ def main_menu_kb(lang: str):
         [InlineKeyboardButton(b["urgent"], callback_data="menu_prices")],
         [InlineKeyboardButton(b["prices"], callback_data="menu_prices"),
          InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio")],
+        [InlineKeyboardButton(b["availability"], callback_data="menu_availability"),
+         InlineKeyboardButton(b["track"], callback_data="menu_track")],
         [InlineKeyboardButton(b["reviews"], callback_data="rev_0"),
          InlineKeyboardButton(b["stats"], callback_data="menu_stats")],
         [InlineKeyboardButton(b["why"], callback_data="menu_why"),
          InlineKeyboardButton(b["faq"], callback_data="menu_faq")],
-        [InlineKeyboardButton(b["about"], callback_data="menu_about")],
+        [InlineKeyboardButton(b["about"], callback_data="menu_about"),
+         InlineKeyboardButton(b["referral"], callback_data="menu_referral")],
         [InlineKeyboardButton(b["contact"], callback_data="menu_contact")],
         [InlineKeyboardButton(b["lang"], callback_data="toggle_lang")],
     ]
@@ -446,6 +501,28 @@ def review_render(index: int, lang: str) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(context)
+    user = update.effective_user
+
+    if context.args:
+        arg = context.args[0]
+        if arg.startswith("ref_"):
+            try:
+                referrer_id = int(arg[len("ref_"):])
+            except ValueError:
+                referrer_id = None
+            referrals = context.bot_data.setdefault("referrals", {})
+            if referrer_id and referrer_id != user.id and user.id not in referrals:
+                referrals[user.id] = referrer_id
+                context.user_data["referred_by"] = referrer_id
+                try:
+                    await context.bot.send_message(
+                        chat_id=referrer_id,
+                        text=(f"🎉 Шахсе тавассути линки даъвати шумо ба SIMO.MEDIA ворид шуд! "
+                              f"Агар онҳо фармоиш диҳанд, шумо {REFERRAL_DISCOUNT_PERCENT}% тахфиф мегиред 🎁"),
+                    )
+                except Exception:
+                    pass
+
     try:
         await update.message.reply_photo(
             photo=WELCOME_IMAGE_URL,
@@ -482,6 +559,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "menu_main":
+        context.user_data.pop("awaiting", None)
         await safe_edit(query, t("welcome", lang), main_menu_kb(lang))
 
     elif data == "menu_prices":
@@ -505,6 +583,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "menu_contact":
         await safe_edit(query, t("contact", lang), contact_kb(lang))
 
+    elif data == "menu_availability":
+        context.user_data["awaiting"] = "availability"
+        await safe_edit(query, t("ask_avail_date", lang), back_to_main_kb(lang))
+
+    elif data == "menu_track":
+        context.user_data["awaiting"] = "track"
+        await safe_edit(query, t("ask_track_number", lang), back_to_main_kb(lang))
+
+    elif data == "menu_referral":
+        link = f"https://t.me/{BOT_USERNAME}?start=ref_{query.from_user.id}"
+        text = t("referral_text", lang).format(link=link)
+        await safe_edit(query, text, back_to_main_kb(lang))
+
     elif data.startswith("rev_"):
         index = int(data[len("rev_"):])
         await safe_edit(query, review_render(index, lang), reviews_kb(index, lang))
@@ -514,6 +605,56 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pkg = PACKAGES.get(pkg_key)
         if pkg:
             await safe_edit(query, pkg["text"][lang], package_detail_kb(pkg_key, lang))
+
+
+async def awaiting_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Идора мекунад агар корбар дар ҳолати интизории вуруд (сана/рақами фармоиш) бошад.
+    True бармегардонад агар паём идора шуда бошад."""
+    awaiting = context.user_data.get("awaiting")
+    if not awaiting:
+        return False
+
+    lang = get_lang(context)
+    text = update.message.text
+
+    if awaiting == "availability":
+        norm = normalize_date(text)
+        if not norm:
+            await update.message.reply_text(t("date_invalid", lang), parse_mode="HTML")
+            return True
+        booked = context.bot_data.get("booked_dates", {})
+        context.user_data.pop("awaiting", None)
+        if norm in booked:
+            await update.message.reply_text(
+                t("date_taken", lang).format(date=norm), reply_markup=back_to_main_kb(lang), parse_mode="HTML"
+            )
+        else:
+            await update.message.reply_text(
+                t("date_available", lang).format(date=norm), reply_markup=prices_menu_kb(lang), parse_mode="HTML"
+            )
+        return True
+
+    if awaiting == "track":
+        order_num = text.strip().upper()
+        orders = context.bot_data.get("orders", {})
+        context.user_data.pop("awaiting", None)
+        order = orders.get(order_num)
+        if not order:
+            await update.message.reply_text(
+                t("track_not_found", lang), reply_markup=back_to_main_kb(lang), parse_mode="HTML"
+            )
+        else:
+            status = order.get("status", "🆕 Нав")
+            info = (
+                f"📋 <b>{order_num}</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                f"{t('order_pkg', lang)}: {order.get('pkg_short', '—')}\n"
+                f"{t('order_date', lang)}: {order.get('date', '—')}\n\n"
+                f"📌 <b>Ҳолат:</b> {status}"
+            )
+            await update.message.reply_text(info, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        return True
+
+    return False
 
 
 async def unknown_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -560,11 +701,12 @@ async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def ask_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(context)
     date_text = update.message.text
-    if not validate_date(date_text):
+    norm = normalize_date(date_text)
+    if not norm:
         await update.message.reply_text(t("date_invalid", lang), parse_mode="HTML")
         return ASK_DATE
 
-    context.user_data["order_date"] = date_text
+    context.user_data["order_date"] = norm
     context.user_data["order_number"] = f"SM-{random.randint(1000, 9999)}"
     pkg = context.user_data.get("order_pkg", {})
     name = context.user_data.get("order_name", "—")
@@ -591,6 +733,29 @@ async def order_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(context)
     await safe_edit(query, t("ask_name", lang))
     return ASK_NAME
+
+
+async def reminder_job(context: ContextTypes.DEFAULT_TYPE):
+    job_data = context.job.data
+    order_number = job_data["order_number"]
+    orders = context.bot_data.get("orders", {})
+    order = orders.get(order_number)
+    if not order or order.get("status") != "🆕 Нав":
+        return
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=(
+                    f"⏰ <b>ЁДОВАРӢ!</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                    f"Фармоиши <b>{order_number}</b> зиёда аз {REMINDER_HOURS} соат ҷавоб намондааст!\n\n"
+                    f"👤 {order.get('name', '—')} | 📱 {order.get('phone', '—')}\n"
+                    f"📦 {order.get('pkg_short', '—')} | 📅 {order.get('date', '—')}"
+                ),
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            logger.error(f"Ёдоварӣ фиристода нашуд: {e}")
 
 
 async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -620,6 +785,14 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.bot_data.setdefault("known_customers", {})[user.id] = lang
     context.bot_data.setdefault("customer_last_order", {})[user.id] = order_number
+    context.bot_data.setdefault("booked_dates", {})[date] = order_number
+    context.bot_data.setdefault("orders", {})[order_number] = {
+        "chat_id": user.id, "lang": lang, "pkg_short": pkg.get("short", "—"),
+        "name": name, "phone": phone, "date": date, "status": "🆕 Нав",
+    }
+
+    is_referred = bool(context.user_data.get("referred_by"))
+    referral_extra = t("referral_note", lang) if is_referred else ""
 
     for admin_id in ADMIN_IDS:
         try:
@@ -631,7 +804,8 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"📦 Пакет: {pkg.get('short', '—')}\n"
                     f"👤 Ном: {name}\n📱 Телефон: {phone}\n📅 Санаи тӯй: {date}\n\n"
                     f"Telegram: @{user.username if user.username else '—'}\n"
-                    f"User ID: {user.id}\n\n"
+                    f"User ID: {user.id}"
+                    f"{referral_extra}\n\n"
                     "💬 <i>Барои ҷавоб додан ба мизоҷ, ба ҳамин паём Reply кунед.</i>"
                 ),
                 parse_mode="HTML",
@@ -642,6 +816,11 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         except Exception as e:
             logger.error(f"Хабар ба админ нарафт: {e}")
+
+    if context.job_queue:
+        context.job_queue.run_once(
+            reminder_job, when=timedelta(hours=REMINDER_HOURS), data={"order_number": order_number}
+        )
 
     context.user_data.pop("order_pkg", None)
     context.user_data.pop("order_name", None)
@@ -659,6 +838,10 @@ async def cancel_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def relay_customer_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    handled = await awaiting_input_handler(update, context)
+    if handled:
+        return
+
     user = update.message.from_user
     known = context.bot_data.get("known_customers", {})
 
@@ -707,19 +890,94 @@ async def admin_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     target_chat_id = mapping["chat_id"]
-    customer_lang = mapping.get("lang", "tj")
-    prefix = "💬 <b>SIMO.MEDIA:</b>\n\n" if customer_lang == "tj" else "💬 <b>SIMO.MEDIA:</b>\n\n"
-
     try:
         await context.bot.send_message(
             chat_id=target_chat_id,
-            text=f"{prefix}{update.message.text}",
+            text=f"💬 <b>SIMO.MEDIA:</b>\n\n{update.message.text}",
             parse_mode="HTML",
         )
         await update.message.reply_text("✅ Ба мизоҷ фиристода шуд.")
     except Exception as e:
         logger.error(f"Ҷавоб ба мизоҷ нарафт: {e}")
         await update.message.reply_text("⚠️ Фиристодан ба мизоҷ муяссар нашуд (шояд боти моро блок кардааст).")
+
+
+# ==================== КОМАНДАҲОИ АДМИН ====================
+
+async def admin_only(update: Update) -> bool:
+    return update.effective_user and update.effective_user.id in ADMIN_IDS
+
+
+async def cmd_booked(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update):
+        return
+    booked = context.bot_data.get("booked_dates", {})
+    if not booked:
+        await update.message.reply_text("Ягон сана банд нест.")
+        return
+    lines = [f"📅 {date} — {order}" for date, order in sorted(booked.items())]
+    await update.message.reply_text("📋 <b>Санаҳои банд:</b>\n\n" + "\n".join(lines), parse_mode="HTML")
+
+
+async def cmd_freedate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update):
+        return
+    if not context.args:
+        await update.message.reply_text("Истифода: /freedate 15.08.2026")
+        return
+    norm = normalize_date(context.args[0])
+    if not norm:
+        await update.message.reply_text("Формати сана нодуруст. Мисол: /freedate 15.08.2026")
+        return
+    booked = context.bot_data.get("booked_dates", {})
+    if norm in booked:
+        del booked[norm]
+        await update.message.reply_text(f"✅ Санаи {norm} озод карда шуд.")
+    else:
+        await update.message.reply_text(f"Санаи {norm} дар рӯйхати банд нест.")
+
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update):
+        return
+    if len(context.args) < 2:
+        await update.message.reply_text("Истифода: /status SM-1234 Тасдиқшуда")
+        return
+    order_number = context.args[0].upper()
+    new_status = " ".join(context.args[1:])
+    orders = context.bot_data.get("orders", {})
+    order = orders.get(order_number)
+    if not order:
+        await update.message.reply_text(f"Фармоиши {order_number} ёфт нашуд.")
+        return
+    order["status"] = new_status
+    await update.message.reply_text(f"✅ Ҳолати {order_number} иваз шуд ба: {new_status}")
+    try:
+        lang = order.get("lang", "tj")
+        note = (f"📌 Ҳолати фармоиши шумо ({order_number}) иваз шуд:\n<b>{new_status}</b>"
+                if lang == "tj" else
+                f"📌 Статус вашего заказа ({order_number}) изменён:\n<b>{new_status}</b>")
+        await context.bot.send_message(chat_id=order["chat_id"], text=note, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Огоҳии тағйири ҳолат ба мизоҷ нарафт: {e}")
+
+
+async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update):
+        return
+    if not context.args:
+        await update.message.reply_text("Истифода: /broadcast Матни паём барои ҳама мизоҷон")
+        return
+    text = " ".join(context.args)
+    known = context.bot_data.get("known_customers", {})
+    sent, failed = 0, 0
+    for chat_id in list(known.keys()):
+        try:
+            await context.bot.send_message(chat_id=chat_id, text=f"📢 <b>SIMO.MEDIA</b>\n\n{text}", parse_mode="HTML")
+            sent += 1
+        except Exception:
+            failed += 1
+    await update.message.reply_text(f"✅ Фиристода шуд ба {sent} мизоҷ. Хато: {failed}.")
 
 
 # ==================== ИДОРАКУНИИ ХАТОГИҲО ====================
@@ -762,6 +1020,10 @@ def main():
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("menu", start))
+    application.add_handler(CommandHandler("booked", cmd_booked))
+    application.add_handler(CommandHandler("freedate", cmd_freedate))
+    application.add_handler(CommandHandler("status", cmd_status))
+    application.add_handler(CommandHandler("broadcast", cmd_broadcast))
     application.add_handler(
         MessageHandler(
             filters.REPLY & filters.User(user_id=ADMIN_IDS) & filters.TEXT & ~filters.COMMAND,
