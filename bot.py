@@ -50,6 +50,7 @@ TELEGRAM_LINK = "https://t.me/editor2202"
 INSTAGRAM_LINK = "https://www.instagram.com/iam_shodovar?igsh=Z3g1NHhrOXM5NGdl"
 
 WELCOME_IMAGE_URL = "https://raw.githubusercontent.com/dilnozshodovar-debug/simo-media-bot/main/logo.png"
+ABOUT_IMAGE_URL = "https://raw.githubusercontent.com/dilnozshodovar-debug/simo-media-bot/main/about.jpg"
 
 PORTFOLIO_LINKS = [
     ("🎬 Намунаи клип — Reel", "https://www.instagram.com/reel/DYJFY9MoYnJ/?igsh=MWc4ZHNua2xyMzdkaw=="),
@@ -539,9 +540,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t("welcome", lang), reply_markup=main_menu_kb(lang), parse_mode="HTML")
 
 
-async def safe_edit(query, text, reply_markup=None):
+async def safe_edit(query, text, reply_markup=None, media_url=None):
     try:
-        if query.message.photo:
+        if media_url:
+            from telegram import InputMediaPhoto
+            await query.edit_message_media(
+                media=InputMediaPhoto(media=media_url, caption=text, parse_mode="HTML"),
+                reply_markup=reply_markup,
+            )
+        elif query.message.photo:
             await query.edit_message_caption(caption=text, reply_markup=reply_markup, parse_mode="HTML")
         else:
             await query.edit_message_text(text=text, reply_markup=reply_markup, parse_mode="HTML")
@@ -564,7 +571,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "menu_main":
         context.user_data.pop("awaiting", None)
-        await safe_edit(query, t("welcome", lang), main_menu_kb(lang))
+        await safe_edit(query, t("welcome", lang), main_menu_kb(lang), media_url=WELCOME_IMAGE_URL)
 
     elif data == "menu_prices":
         await safe_edit(query, t("prices_title", lang), prices_menu_kb(lang))
@@ -579,7 +586,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_edit(query, t("faq", lang), back_to_main_kb(lang))
 
     elif data == "menu_about":
-        await safe_edit(query, t("about", lang), back_to_main_kb(lang))
+        await safe_edit(query, t("about", lang), back_to_main_kb(lang), media_url=ABOUT_IMAGE_URL)
 
     elif data == "menu_portfolio":
         await safe_edit(query, t("portfolio_title", lang), portfolio_kb(lang))
