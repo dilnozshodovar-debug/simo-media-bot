@@ -74,6 +74,8 @@ WORK_END_HOUR = 20
 DUSHANBE_TZ = timezone(timedelta(hours=5))
 REMINDER_HOURS = 24
 REFERRAL_DISCOUNT_PERCENT = 5
+DEPOSIT_AMOUNT = "100 сомонӣ"
+PAYMENT_LINK = "http://pay.expresspay.tj/?A=5058270376098736&s=100&c=&f1=133&FIELD2=&FIELD3="
 
 # ==================== МАТНҲО (ду забон) ====================
 
@@ -204,25 +206,51 @@ TEXT = {
         "ru": "Пожалуйста, используйте кнопки меню 👇",
     },
     "ask_name": {
-        "tj": "📝 <b>Қадами 1/3</b> — Лутфан <b>номи худро</b> нависед:",
-        "ru": "📝 <b>Шаг 1/3</b> — Пожалуйста, напишите <b>ваше имя</b>:",
+        "tj": "📝 <b>Қадами 1/4</b> — Лутфан <b>номи худро</b> нависед:",
+        "ru": "📝 <b>Шаг 1/4</b> — Пожалуйста, напишите <b>ваше имя</b>:",
     },
     "ask_phone": {
-        "tj": "📱 <b>Қадами 2/3</b> — Лутфан рақами телефони худро нависед (масалан 93 882 97 96):",
-        "ru": "📱 <b>Шаг 2/3</b> — Напишите ваш номер телефона (например 93 882 97 96):",
+        "tj": "📱 <b>Қадами 2/4</b> — Лутфан рақами телефони худро нависед (масалан 93 882 97 96):",
+        "ru": "📱 <b>Шаг 2/4</b> — Напишите ваш номер телефона (например 93 882 97 96):",
     },
     "phone_invalid": {
         "tj": "⚠️ Рақами телефон нодуруст аст. Лутфан танҳо рақамҳо нависед (масалан 93 882 97 96 ё +992 93 882 97 96):",
         "ru": "⚠️ Неверный номер телефона. Пожалуйста, укажите только цифры (например 93 882 97 96 или +992 93 882 97 96):",
     },
     "ask_date": {
-        "tj": "📅 <b>Қадами 3/3</b> — Лутфан санаи тӯйро нависед (масалан 15.08.2026):",
-        "ru": "📅 <b>Шаг 3/3</b> — Напишите дату свадьбы (например 15.08.2026):",
+        "tj": "📅 <b>Қадами 3/4</b> — Лутфан санаи тӯйро нависед (масалан 15.08.2026):",
+        "ru": "📅 <b>Шаг 3/4</b> — Напишите дату свадьбы (например 15.08.2026):",
     },
     "date_invalid": {
         "tj": "⚠️ Формати сана нодуруст аст. Лутфан бо ин формат нависед: РӮЗ.МОҲ.СОЛ (масалан 15.08.2026):",
         "ru": "⚠️ Неверный формат даты. Пожалуйста, укажите в формате ДЕНЬ.МЕСЯЦ.ГОД (например 15.08.2026):",
     },
+    "ask_payment": {
+        "tj": (f"💳 <b>Қадами 4/4</b> — Оё ҳоло мехоҳед пешпардохт кунед?\n\n"
+               f"Барои мустаҳкам кардани ҷои шумо дар санаи интихобшуда, тавсия медиҳем "
+               f"{DEPOSIT_AMOUNT} пешпардохт кунед. Ин ихтиёрист."),
+        "ru": (f"💳 <b>Шаг 4/4</b> — Хотите внести предоплату сейчас?\n\n"
+               f"Чтобы закрепить за собой выбранную дату, рекомендуем внести предоплату "
+               f"{DEPOSIT_AMOUNT}. Это по желанию."),
+    },
+    "pay_now_btn": {"tj": "✅ Ҳоло мехоҳам пардохт кунам", "ru": "✅ Хочу оплатить сейчас"},
+    "pay_later_btn": {"tj": "⏳ Дертар пардохт мекунам", "ru": "⏳ Оплачу позже"},
+    "payment_link_text": {
+        "tj": (f"💳 <b>Пешпардохти {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               f"Барои мустаҳкам кардани фармоиши худ, лутфан тавассути линки зерин "
+               f"{DEPOSIT_AMOUNT} пешпардохт кунед:\n\n🔗 {PAYMENT_LINK}\n\n"
+               "Пас аз пардохт, тугмаи «Идома»-ро занед 👇"),
+        "ru": (f"💳 <b>Предоплата {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               f"Чтобы закрепить ваш заказ, пожалуйста, внесите предоплату {DEPOSIT_AMOUNT} "
+               f"по ссылке ниже:\n\n🔗 {PAYMENT_LINK}\n\n"
+               "После оплаты нажмите «Продолжить» 👇"),
+    },
+    "pay_continue_btn": {"tj": "➡️ Идома", "ru": "➡️ Продолжить"},
+    "prepay_status": {
+        "tj": {True: "✅ Пешпардохт кард", False: "⏳ Пешпардохт накард"},
+        "ru": {True: "✅ Внёс предоплату", False: "⏳ Без предоплаты"},
+    },
+    "order_prepay": {"tj": "💳 Пешпардохт", "ru": "💳 Предоплата"},
     "confirm_title": {"tj": "🔎 <b>ЛУТФАН ТАСДИҚ КУНЕД</b>", "ru": "🔎 <b>ПОЖАЛУЙСТА, ПОДТВЕРДИТЕ</b>"},
     "confirm_ok": {"tj": "Ҳама дуруст аст?", "ru": "Всё верно?"},
     "order_pkg": {"tj": "📦 Пакет", "ru": "📦 Пакет"},
@@ -351,7 +379,22 @@ PACKAGES = {
     },
 }
 
-ASK_NAME, ASK_PHONE, ASK_DATE, CONFIRM = range(4)
+def payment_choice_kb(lang: str):
+    b_pay = t("pay_now_btn", lang)
+    b_later = t("pay_later_btn", lang)
+    kb = [
+        [InlineKeyboardButton(b_pay, callback_data="pay_now")],
+        [InlineKeyboardButton(b_later, callback_data="pay_later")],
+    ]
+    return InlineKeyboardMarkup(kb)
+
+
+def payment_link_kb(lang: str):
+    kb = [[InlineKeyboardButton(t("pay_continue_btn", lang), callback_data="pay_continue")]]
+    return InlineKeyboardMarkup(kb)
+
+
+ASK_NAME, ASK_PHONE, ASK_DATE, PAYMENT_CHOICE, CONFIRM = range(5)
 
 # ==================== ФУНКСИЯҲОИ КӮМАКӣ ====================
 
@@ -719,22 +762,52 @@ async def ask_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["order_date"] = norm
     context.user_data["order_number"] = f"SM-{random.randint(1000, 9999)}"
+
+    await update.message.reply_text(t("ask_payment", lang), reply_markup=payment_choice_kb(lang), parse_mode="HTML")
+    return PAYMENT_CHOICE
+
+
+def build_confirm_summary(context: ContextTypes.DEFAULT_TYPE, lang: str) -> str:
     pkg = context.user_data.get("order_pkg", {})
     name = context.user_data.get("order_name", "—")
     phone = context.user_data.get("order_phone", "—")
     date = context.user_data.get("order_date", "—")
     order_number = context.user_data.get("order_number", "—")
+    prepay = context.user_data.get("prepay", False)
+    prepay_label = t("prepay_status", lang)[prepay]
 
-    summary = (
+    return (
         f"{t('confirm_title', lang)}\n━━━━━━━━━━━━━━━━━━\n\n"
         f"{t('order_number', lang)}: <b>{order_number}</b>\n"
         f"{t('order_pkg', lang)}: {pkg.get('short', '—')}\n"
         f"{t('order_name', lang)}: {name}\n"
         f"{t('order_phone', lang)}: {phone}\n"
-        f"{t('order_date', lang)}: {date}\n\n"
+        f"{t('order_date', lang)}: {date}\n"
+        f"{t('order_prepay', lang)}: {prepay_label}\n\n"
         f"{t('confirm_ok', lang)}"
     )
-    await update.message.reply_text(summary, reply_markup=confirm_kb(lang), parse_mode="HTML")
+
+
+async def payment_choice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    lang = get_lang(context)
+
+    if query.data == "pay_now":
+        await safe_edit(query, t("payment_link_text", lang), payment_link_kb(lang))
+        return PAYMENT_CHOICE
+
+    context.user_data["prepay"] = False
+    await safe_edit(query, build_confirm_summary(context, lang), confirm_kb(lang))
+    return CONFIRM
+
+
+async def payment_continue_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    lang = get_lang(context)
+    context.user_data["prepay"] = True
+    await safe_edit(query, build_confirm_summary(context, lang), confirm_kb(lang))
     return CONFIRM
 
 
@@ -779,6 +852,8 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone = context.user_data.get("order_phone", "—")
     date = context.user_data.get("order_date", "—")
     order_number = context.user_data.get("order_number", "—")
+    prepay = context.user_data.get("prepay", False)
+    prepay_label = t("prepay_status", lang)[prepay]
 
     hours_note = "" if is_within_work_hours() else t("after_hours_note", lang)
 
@@ -789,7 +864,8 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{t('order_pkg', lang)}: {pkg.get('short', '—')}\n"
         f"{t('order_name', lang)}: {name}\n"
         f"{t('order_phone', lang)}: {phone}\n"
-        f"{t('order_date', lang)}: {date}\n\n"
+        f"{t('order_date', lang)}: {date}\n"
+        f"{t('order_prepay', lang)}: {prepay_label}\n\n"
         f"{t('order_thanks', lang)}\n\n<i>{t('order_keep_number', lang)}</i>{hours_note}",
         after_order_kb(lang),
     )
@@ -799,11 +875,12 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.bot_data.setdefault("booked_dates", {})[date] = order_number
     context.bot_data.setdefault("orders", {})[order_number] = {
         "chat_id": user.id, "lang": lang, "pkg_short": pkg.get("short", "—"),
-        "name": name, "phone": phone, "date": date, "status": "🆕 Нав",
+        "name": name, "phone": phone, "date": date, "status": "🆕 Нав", "prepay": prepay,
     }
 
     is_referred = bool(context.user_data.get("referred_by"))
     referral_extra = t("referral_note", lang) if is_referred else ""
+    prepay_extra = f"\n💳 Пешпардохт: {'Ҳа' if prepay else 'Не'}"
 
     for admin_id in ADMIN_IDS:
         try:
@@ -813,7 +890,8 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "🆕 <b>ФАРМОИШИ НАВ!</b>\n━━━━━━━━━━━━━━━━━━\n\n"
                     f"🔖 Рақами фармоиш: <b>{order_number}</b>\n"
                     f"📦 Пакет: {pkg.get('short', '—')}\n"
-                    f"👤 Ном: {name}\n📱 Телефон: {phone}\n📅 Санаи тӯй: {date}\n\n"
+                    f"👤 Ном: {name}\n📱 Телефон: {phone}\n📅 Санаи тӯй: {date}"
+                    f"{prepay_extra}\n\n"
                     f"Telegram: @{user.username if user.username else '—'}\n"
                     f"User ID: {user.id}"
                     f"{referral_extra}\n\n"
@@ -838,6 +916,7 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("order_phone", None)
     context.user_data.pop("order_date", None)
     context.user_data.pop("order_number", None)
+    context.user_data.pop("prepay", None)
     return ConversationHandler.END
 
 
@@ -1052,6 +1131,10 @@ def main():
             ASK_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_name)],
             ASK_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_phone)],
             ASK_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_date)],
+            PAYMENT_CHOICE: [
+                CallbackQueryHandler(payment_choice_handler, pattern="^pay_(now|later)$"),
+                CallbackQueryHandler(payment_continue_handler, pattern="^pay_continue$"),
+            ],
             CONFIRM: [
                 CallbackQueryHandler(order_confirm, pattern="^order_confirm$"),
                 CallbackQueryHandler(order_restart, pattern="^order_restart$"),
