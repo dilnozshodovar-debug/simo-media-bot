@@ -590,6 +590,9 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         after_order_kb(lang),
     )
 
+    context.bot_data.setdefault("known_customers", {})[user.id] = lang
+    context.bot_data.setdefault("customer_last_order", {})[user.id] = order_number
+
     for admin_id in ADMIN_IDS:
         try:
             sent_msg = await context.bot.send_message(
@@ -625,6 +628,42 @@ async def cancel_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("Бекор карда шуд / Отменено", reply_markup=main_menu_kb(lang))
     return ConversationHandler.END
+
+
+async def relay_customer_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    known = context.bot_data.get("known_customers", {})
+
+    if user.id not in known:
+        lang = get_lang(context)
+        await update.message.reply_text(t("unknown", lang), reply_markup=main_menu_kb(lang))
+        return
+
+    lang = known[user.id]
+    order_num = context.bot_data.get("customer_last_order", {}).get(user.id, "")
+    label = f" ({order_num})" if order_num else ""
+    username_part = f" (@{user.username})" if user.username else ""
+
+    text_for_admin = (
+        f"💬 <b>Паём аз мизоҷ{label}</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        f"👤 {user.full_name}{username_part}\n\n"
+        f"{update.message.text}\n\n"
+        "<i>Барои ҷавоб додан, ба ин паём Reply кунед.</i>"
+    )
+
+    for admin_id in ADMIN_IDS:
+        try:
+            sent = await context.bot.send_message(chat_id=admin_id, text=text_for_admin, parse_mode="HTML")
+            context.bot_data.setdefault("order_chats", {})[sent.message_id] = {
+                "chat_id": user.id,
+                "lang": lang,
+            }
+        except Exception as e:
+            logger.error(f"Паёми мизоҷ ба админ нарафт: {e}")
+
+    ack = ("🙏 Паёми шумо гирифта шуд. Ба наздикӣ ҷавоб медиҳем."
+           if lang == "tj" else "🙏 Ваше сообщение получено. Скоро ответим.")
+    await update.message.reply_text(ack)
 
 
 async def admin_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -702,6 +741,9 @@ def main():
         )
     )
     application.add_handler(order_conv)
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.User(user_id=ADMIN_IDS), relay_customer_message)
+    )
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.ALL, unknown_message))
     application.add_error_handler(error_handler)
