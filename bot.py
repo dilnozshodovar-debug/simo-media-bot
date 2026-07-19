@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8864413053:AAFSNnOT6SgRsp3zD16fEMR_BsqBhiloim4")
 
 # ID-и админ(ҳо) барои гирифтани хабари фармоиш
-ADMIN_IDS = []  # мисол: [123456789] — аз @userinfobot гиред
+ADMIN_IDS = [8336737421]  # мисол: [123456789] — аз @userinfobot гиред
 
 CONTACT_PHONE_DISPLAY = "+992 93 882 97 96"
 CONTACT_PHONE_RAW = "992938829796"  # барои линки WhatsApp, бе + ва фосила
