@@ -283,6 +283,9 @@ PACKAGES = {
 
 ASK_NAME, ASK_PHONE, ASK_DATE, CONFIRM = range(4)
 
+# Мукобилаи (admin_id, message_id) -> client_chat_id барои ҷавоб додан ба мизоҷ
+ADMIN_REPLY_MAP = {}
+
 # ==================== ФУНКСИЯҲОИ КӮМАКӣ ====================
 
 def get_lang(context: ContextTypes.DEFAULT_TYPE) -> str:
@@ -589,7 +592,7 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for admin_id in ADMIN_IDS:
         try:
-            await context.bot.send_message(
+            sent_msg = await context.bot.send_message(
                 chat_id=admin_id,
                 text=(
                     "🆕 <b>ФАРМОИШИ НАВ!</b>\n━━━━━━━━━━━━━━━━━━\n\n"
@@ -597,10 +600,15 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"📦 Пакет: {pkg.get('short', '—')}\n"
                     f"👤 Ном: {name}\n📱 Телефон: {phone}\n📅 Санаи тӯй: {date}\n\n"
                     f"Telegram: @{user.username if user.username else '—'}\n"
-                    f"User ID: {user.id}"
+                    f"User ID: {user.id}\n\n"
+                    "💬 <i>Барои ҷавоб додан ба мизоҷ, ба ҳамин паём Reply кунед.</i>"
                 ),
                 parse_mode="HTML",
             )
+            context.bot_data.setdefault("order_chats", {})[sent_msg.message_id] = {
+                "chat_id": user.id,
+                "lang": lang,
+            }
         except Exception as e:
             logger.error(f"Хабар ба админ нарафт: {e}")
 
@@ -617,6 +625,34 @@ async def cancel_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("Бекор карда шуд / Отменено", reply_markup=main_menu_kb(lang))
     return ConversationHandler.END
+
+
+async def admin_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    reply_to = update.message.reply_to_message
+    order_chats = context.bot_data.get("order_chats", {})
+    mapping = order_chats.get(reply_to.message_id) if reply_to else None
+
+    if not mapping:
+        await update.message.reply_text(
+            "⚠️ Ин паём ба ягон фармоиш алоқаманд нест — лутфан ба худи паёми "
+            "\"ФАРМОИШИ НАВ!\" Reply кунед."
+        )
+        return
+
+    target_chat_id = mapping["chat_id"]
+    customer_lang = mapping.get("lang", "tj")
+    prefix = "💬 <b>SIMO.MEDIA:</b>\n\n" if customer_lang == "tj" else "💬 <b>SIMO.MEDIA:</b>\n\n"
+
+    try:
+        await context.bot.send_message(
+            chat_id=target_chat_id,
+            text=f"{prefix}{update.message.text}",
+            parse_mode="HTML",
+        )
+        await update.message.reply_text("✅ Ба мизоҷ фиристода шуд.")
+    except Exception as e:
+        logger.error(f"Ҷавоб ба мизоҷ нарафт: {e}")
+        await update.message.reply_text("⚠️ Фиристодан ба мизоҷ муяссар нашуд (шояд боти моро блок кардааст).")
 
 
 # ==================== ИДОРАКУНИИ ХАТОГИҲО ====================
@@ -659,6 +695,12 @@ def main():
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("menu", start))
+    application.add_handler(
+        MessageHandler(
+            filters.REPLY & filters.User(user_id=ADMIN_IDS) & filters.TEXT & ~filters.COMMAND,
+            admin_reply_handler,
+        )
+    )
     application.add_handler(order_conv)
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.ALL, unknown_message))
