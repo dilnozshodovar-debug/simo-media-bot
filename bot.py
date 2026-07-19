@@ -502,6 +502,10 @@ def review_render(index: int, lang: str) -> str:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(context)
     user = update.effective_user
+    context.bot_data.setdefault("all_users", {})[user.id] = {
+        "name": user.full_name,
+        "username": user.username,
+    }
 
     if context.args:
         arg = context.args[0]
@@ -962,6 +966,37 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Огоҳии тағйири ҳолат ба мизоҷ нарафт: {e}")
 
 
+async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update):
+        return
+    all_users = context.bot_data.get("all_users", {})
+    known_customers = context.bot_data.get("known_customers", {})
+    orders = context.bot_data.get("orders", {})
+    referrals = context.bot_data.get("referrals", {})
+
+    status_counts = {}
+    for o in orders.values():
+        s = o.get("status", "🆕 Нав")
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    lines = [
+        "📊 <b>ОМОРИ БОТ</b>",
+        "━━━━━━━━━━━━━━━━━━",
+        "",
+        f"👥 Ҳамагӣ кушодаанд ботро: <b>{len(all_users)}</b> нафар",
+        f"📝 Фармоиш додаанд: <b>{len(known_customers)}</b> нафар",
+        f"🔖 Ҳамагӣ фармоишҳо: <b>{len(orders)}</b>",
+        f"🎁 Тавассути даъвати дӯст омадаанд: <b>{len(referrals)}</b> нафар",
+    ]
+    if status_counts:
+        lines.append("")
+        lines.append("<b>Ҳолати фармоишҳо:</b>")
+        for status, count in status_counts.items():
+            lines.append(f"• {status}: {count}")
+
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+
 async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await admin_only(update):
         return
@@ -1023,6 +1058,7 @@ def main():
     application.add_handler(CommandHandler("booked", cmd_booked))
     application.add_handler(CommandHandler("freedate", cmd_freedate))
     application.add_handler(CommandHandler("status", cmd_status))
+    application.add_handler(CommandHandler("stats", cmd_stats))
     application.add_handler(CommandHandler("broadcast", cmd_broadcast))
     application.add_handler(
         MessageHandler(
