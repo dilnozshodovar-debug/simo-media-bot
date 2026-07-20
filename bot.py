@@ -85,7 +85,7 @@ BTN = {
         "reviews": "⭐ Тавсифҳо", "stats": "📊 Дар рақамҳо", "why": "✨ Чаро маҳз мо?",
         "faq": "❓ FAQ", "about": "ℹ️ Дар бораи мо", "contact": "📞 Тамос",
         "availability": "📅 Санҷиши сана", "track": "📋 Пайгирии фармоиш",
-        "referral": "🎁 Даъвати дӯстон", "lang": "🇷🇺 На русском",
+        "referral": "🎁 Даъвати дӯстон", "compare": "📊 Муқоисаи пакетҳо", "lang": "🇷🇺 На русском",
         "back": "⬅️ Ба меню асосӣ", "back_prices": "⬅️ Ба прайс-лист",
         "order": "✅ Ин пакетро фармоиш медиҳам", "confirm": "✅ Тасдиқ ва фиристодан",
         "restart": "✏️ Аз нав пур кардан", "prev": "⬅️ Қаблӣ", "next": "Баъдӣ ➡️",
@@ -96,7 +96,7 @@ BTN = {
         "reviews": "⭐ Отзывы", "stats": "📊 В цифрах", "why": "✨ Почему мы?",
         "faq": "❓ FAQ", "about": "ℹ️ О нас", "contact": "📞 Контакты",
         "availability": "📅 Проверить дату", "track": "📋 Отследить заказ",
-        "referral": "🎁 Пригласить друзей", "lang": "🇹🇯 Тоҷикӣ",
+        "referral": "🎁 Пригласить друзей", "compare": "📊 Сравнить пакеты", "lang": "🇹🇯 Тоҷикӣ",
         "back": "⬅️ Главное меню", "back_prices": "⬅️ К прайс-листу",
         "order": "✅ Заказать этот пакет", "confirm": "✅ Подтвердить и отправить",
         "restart": "✏️ Заполнить заново", "prev": "⬅️ Пред.", "next": "След. ➡️",
@@ -193,6 +193,34 @@ TEXT = {
     "prices_title": {
         "tj": "💰 <b>ПРАЙС-ЛИСТИ SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\nЛутфан пакетро интихоб кунед 👇",
         "ru": "💰 <b>ПРАЙС-ЛИСТ SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\nВыберите пакет 👇",
+    },
+    "compare_table": {
+        "tj": ("📊 <b>МУҚОИСАИ ПАКЕТҲО</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "💰 <b>Нарх</b>\n🎥 STANDARD: 1500 сомонӣ\n👑 VIP: 2000 сомонӣ\n💎 VIP PREMIUM: 3000 сомонӣ\n\n"
+               "📸 <b>Наворбардорӣ ва аксбардории касбӣ</b>\n✅ Дар ҳар се пакет\n\n"
+               "💿 <b>Диски аслӣ (DVD)</b>\n🎥 1 ҷуфт | 👑 1 ҷуфт | 💎 2 ҷуфт\n\n"
+               "💾 <b>Флешкаи аслӣ (64GB)</b>\n🎥 ❌ | 👑 ✅ | 💎 ✅\n\n"
+               "📖 <b>Албоми Wedding Day</b>\n🎥 ❌ | 👑 ✅ | 💎 ✅\n\n"
+               "🖼️ <b>Албом барои аксҳо</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "🎬 <b>Клипи тӯёна</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "💕 <b>Love Story</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "🎥 <b>Крани наворбардорӣ</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "🎁 <b>Тӯҳфаи акси чопшуда</b>\n🎥 10 дона | 👑 30 дона | 💎 50 дона\n\n"
+               "⏳ <b>Омодасозии мавод</b>\n🎥 25–30 рӯз | 👑 15–20 рӯз | 💎 7–10 рӯз\n\n"
+               "👇 Пакетро интихоб кунед:"),
+        "ru": ("📊 <b>СРАВНЕНИЕ ПАКЕТОВ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "💰 <b>Цена</b>\n🎥 STANDARD: 1500 сомони\n👑 VIP: 2000 сомони\n💎 VIP PREMIUM: 3000 сомони\n\n"
+               "📸 <b>Профессиональная видео- и фотосъёмка</b>\n✅ Во всех трёх пакетах\n\n"
+               "💿 <b>Оригинальный DVD-диск</b>\n🎥 1 шт | 👑 1 шт | 💎 2 шт\n\n"
+               "💾 <b>Оригинальная флешка (64GB)</b>\n🎥 ❌ | 👑 ✅ | 💎 ✅\n\n"
+               "📖 <b>Альбом Wedding Day</b>\n🎥 ❌ | 👑 ✅ | 💎 ✅\n\n"
+               "🖼️ <b>Фотоальбом</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "🎬 <b>Свадебный клип</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "💕 <b>Love Story</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "🎥 <b>Операторский кран</b>\n🎥 ❌ | 👑 ❌ | 💎 ✅\n\n"
+               "🎁 <b>Подарок — печатные фото</b>\n🎥 10 шт | 👑 30 шт | 💎 50 шт\n\n"
+               "⏳ <b>Готовность материала</b>\n🎥 25–30 дней | 👑 15–20 дней | 💎 7–10 дней\n\n"
+               "👇 Выберите пакет:"),
     },
     "portfolio_title": {
         "tj": ("🎬 <b>ПОРТФОЛИО</b>\n━━━━━━━━━━━━━━━━━━\n\nНамунаи баъзе корҳои мо дар поён 👇\n\n"
@@ -465,6 +493,7 @@ def main_menu_kb(lang: str):
         [InlineKeyboardButton(b["urgent"], callback_data="menu_prices")],
         [InlineKeyboardButton(b["prices"], callback_data="menu_prices"),
          InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio")],
+        [InlineKeyboardButton(b["compare"], callback_data="menu_compare")],
         [InlineKeyboardButton(b["availability"], callback_data="menu_availability"),
          InlineKeyboardButton(b["track"], callback_data="menu_track")],
         [InlineKeyboardButton(b["reviews"], callback_data="rev_0"),
@@ -641,6 +670,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "menu_prices":
         await safe_edit(query, t("prices_title", lang), prices_menu_kb(lang))
+
+    elif data == "menu_compare":
+        await safe_edit(query, t("compare_table", lang), prices_menu_kb(lang))
 
     elif data == "menu_why":
         await safe_edit(query, t("why", lang), back_to_main_kb(lang))
