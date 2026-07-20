@@ -228,27 +228,43 @@ TEXT = {
     "ask_payment": {
         "tj": (f"💳 <b>Қадами 4/4</b> — Оё ҳоло мехоҳед пешпардохт кунед?\n\n"
                f"Барои мустаҳкам кардани ҷои шумо дар санаи интихобшуда, тавсия медиҳем "
-               f"{DEPOSIT_AMOUNT} пешпардохт кунед. Ин ихтиёрист."),
+               f"{DEPOSIT_AMOUNT} пешпардохт кунед ва чек (скриншоти пардохт)-ро фиристед. Ин ихтиёрист."),
         "ru": (f"💳 <b>Шаг 4/4</b> — Хотите внести предоплату сейчас?\n\n"
                f"Чтобы закрепить за собой выбранную дату, рекомендуем внести предоплату "
-               f"{DEPOSIT_AMOUNT}. Это по желанию."),
+               f"{DEPOSIT_AMOUNT} и отправить скриншот чека оплаты. Это по желанию."),
     },
     "pay_now_btn": {"tj": "✅ Ҳоло мехоҳам пардохт кунам", "ru": "✅ Хочу оплатить сейчас"},
     "pay_later_btn": {"tj": "⏳ Дертар пардохт мекунам", "ru": "⏳ Оплачу позже"},
     "payment_link_text": {
         "tj": (f"💳 <b>Пешпардохти {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-               f"Барои мустаҳкам кардани фармоиши худ, лутфан тавассути линки зерин "
-               f"{DEPOSIT_AMOUNT} пешпардохт кунед:\n\n🔗 {PAYMENT_LINK}\n\n"
-               "Пас аз пардохт, тугмаи «Идома»-ро занед 👇"),
+               f"1️⃣ Тавассути линки зерин {DEPOSIT_AMOUNT} пардохт кунед:\n\n🔗 {PAYMENT_LINK}\n\n"
+               "2️⃣ Тугмаи «Ман пардохт кардам»-ро занед\n"
+               "3️⃣ Чек (скриншоти пардохт)-ро фиристед 👇"),
         "ru": (f"💳 <b>Предоплата {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-               f"Чтобы закрепить ваш заказ, пожалуйста, внесите предоплату {DEPOSIT_AMOUNT} "
-               f"по ссылке ниже:\n\n🔗 {PAYMENT_LINK}\n\n"
-               "После оплаты нажмите «Продолжить» 👇"),
+               f"1️⃣ Внесите предоплату {DEPOSIT_AMOUNT} по ссылке ниже:\n\n🔗 {PAYMENT_LINK}\n\n"
+               "2️⃣ Нажмите «Я оплатил(а)»\n"
+               "3️⃣ Отправьте скриншот чека оплаты 👇"),
     },
-    "pay_continue_btn": {"tj": "➡️ Идома", "ru": "➡️ Продолжить"},
+    "pay_continue_btn": {"tj": "✅ Ман пардохт кардам", "ru": "✅ Я оплатил(а)"},
+    "ask_receipt": {
+        "tj": ("📸 <b>Чеки пардохт</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "Лутфан расми чек (скриншоти пардохт)-ро фиристед.\n"
+               "Метавонед дар зери акс маблағи пардохтшударо низ нависед."),
+        "ru": ("📸 <b>Чек оплаты</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "Пожалуйста, отправьте скриншот чека оплаты.\n"
+               "Вы можете указать оплаченную сумму в подписи к фото."),
+    },
+    "receipt_invalid": {
+        "tj": "⚠️ Лутфан расми чекро (акс) фиристед, на матн.",
+        "ru": "⚠️ Пожалуйста, отправьте фото чека, а не текст.",
+    },
+    "receipt_received": {
+        "tj": "✅ Чек гирифта шуд! Ба зудӣ санҷида мешавад.",
+        "ru": "✅ Чек получен! Скоро будет проверен.",
+    },
     "prepay_status": {
-        "tj": {True: "✅ Пешпардохт кард", False: "⏳ Пешпардохт накард"},
-        "ru": {True: "✅ Внёс предоплату", False: "⏳ Без предоплаты"},
+        "tj": {True: "✅ Чек фиристод (дар ҳоли санҷиш)", False: "⏳ Пешпардохт накард"},
+        "ru": {True: "✅ Отправил(а) чек (на проверке)", False: "⏳ Без предоплаты"},
     },
     "order_prepay": {"tj": "💳 Пешпардохт", "ru": "💳 Предоплата"},
     "confirm_title": {"tj": "🔎 <b>ЛУТФАН ТАСДИҚ КУНЕД</b>", "ru": "🔎 <b>ПОЖАЛУЙСТА, ПОДТВЕРДИТЕ</b>"},
@@ -390,11 +406,18 @@ def payment_choice_kb(lang: str):
 
 
 def payment_link_kb(lang: str):
-    kb = [[InlineKeyboardButton(t("pay_continue_btn", lang), callback_data="pay_continue")]]
+    kb = [
+        [InlineKeyboardButton(t("pay_continue_btn", lang), callback_data="pay_continue")],
+        [InlineKeyboardButton(t("pay_later_btn", lang), callback_data="pay_later")],
+    ]
     return InlineKeyboardMarkup(kb)
 
 
-ASK_NAME, ASK_PHONE, ASK_DATE, PAYMENT_CHOICE, CONFIRM = range(5)
+def receipt_wait_kb(lang: str):
+    return InlineKeyboardMarkup([[InlineKeyboardButton(t("pay_later_btn", lang), callback_data="pay_later")]])
+
+
+ASK_NAME, ASK_PHONE, ASK_DATE, PAYMENT_CHOICE, ASK_RECEIPT, CONFIRM = range(6)
 
 # ==================== ФУНКСИЯҲОИ КӮМАКӣ ====================
 
@@ -806,9 +829,46 @@ async def payment_continue_handler(update: Update, context: ContextTypes.DEFAULT
     query = update.callback_query
     await query.answer()
     lang = get_lang(context)
+    await safe_edit(query, t("ask_receipt", lang), receipt_wait_kb(lang))
+    return ASK_RECEIPT
+
+
+async def receipt_photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(context)
+    user = update.message.from_user
     context.user_data["prepay"] = True
-    await safe_edit(query, build_confirm_summary(context, lang), confirm_kb(lang))
+
+    order_number = context.user_data.get("order_number", "—")
+    pkg = context.user_data.get("order_pkg", {})
+    caption = (
+        f"🧾 <b>Чеки пардохт — {order_number}</b>\n"
+        f"👤 {context.user_data.get('order_name', '—')} | 📱 {context.user_data.get('order_phone', '—')}\n"
+        f"📦 {pkg.get('short', '—')}\n"
+    )
+    if update.message.caption:
+        caption += f"\n💬 {update.message.caption}"
+
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_photo(
+                chat_id=admin_id,
+                photo=update.message.photo[-1].file_id,
+                caption=caption,
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            logger.error(f"Чек ба админ нарафт: {e}")
+
+    await update.message.reply_text(t("receipt_received", lang))
+    await context.bot.send_chat_action(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    await update.message.reply_text(build_confirm_summary(context, lang), reply_markup=confirm_kb(lang), parse_mode="HTML")
     return CONFIRM
+
+
+async def receipt_wrong_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(context)
+    await update.message.reply_text(t("receipt_invalid", lang))
+    return ASK_RECEIPT
 
 
 async def order_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -881,6 +941,8 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_referred = bool(context.user_data.get("referred_by"))
     referral_extra = t("referral_note", lang) if is_referred else ""
     prepay_extra = f"\n💳 Пешпардохт: {'Ҳа' if prepay else 'Не'}"
+    verify_note = ("\n\n⚠️ <b>Диққат:</b> Мизоҷ гуфт, ки пардохт кардааст — лутфан "
+                    "тавассути ExpressPay санҷед, пеш аз идомаи кор!") if prepay else ""
 
     for admin_id in ADMIN_IDS:
         try:
@@ -891,7 +953,7 @@ async def order_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"🔖 Рақами фармоиш: <b>{order_number}</b>\n"
                     f"📦 Пакет: {pkg.get('short', '—')}\n"
                     f"👤 Ном: {name}\n📱 Телефон: {phone}\n📅 Санаи тӯй: {date}"
-                    f"{prepay_extra}\n\n"
+                    f"{prepay_extra}{verify_note}\n\n"
                     f"Telegram: @{user.username if user.username else '—'}\n"
                     f"User ID: {user.id}"
                     f"{referral_extra}\n\n"
@@ -1134,6 +1196,11 @@ def main():
             PAYMENT_CHOICE: [
                 CallbackQueryHandler(payment_choice_handler, pattern="^pay_(now|later)$"),
                 CallbackQueryHandler(payment_continue_handler, pattern="^pay_continue$"),
+            ],
+            ASK_RECEIPT: [
+                CallbackQueryHandler(payment_choice_handler, pattern="^pay_later$"),
+                MessageHandler(filters.PHOTO, receipt_photo_handler),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receipt_wrong_type_handler),
             ],
             CONFIRM: [
                 CallbackQueryHandler(order_confirm, pattern="^order_confirm$"),
