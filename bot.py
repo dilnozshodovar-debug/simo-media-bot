@@ -1181,18 +1181,18 @@ async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await admin_only(update):
         return
     if not context.args:
-        await update.message.reply_text("Истифода: /broadcast Матни паём барои ҳама мизоҷон")
+        await update.message.reply_text("Истифода: /broadcast Матни паём барои ҳама корбарон")
         return
     text = " ".join(context.args)
-    known = context.bot_data.get("known_customers", {})
+    all_users = context.bot_data.get("all_users", {})
     sent, failed = 0, 0
-    for chat_id in list(known.keys()):
+    for chat_id in list(all_users.keys()):
         try:
             await context.bot.send_message(chat_id=chat_id, text=f"📢 <b>SIMO.MEDIA</b>\n\n{text}", parse_mode="HTML")
             sent += 1
         except Exception:
             failed += 1
-    await update.message.reply_text(f"✅ Фиристода шуд ба {sent} мизоҷ. Хато: {failed}.")
+    await update.message.reply_text(f"✅ Фиристода шуд ба {sent} корбар. Хато: {failed}.")
 
 
 # ==================== ИДОРАКУНИИ ХАТОГИҲО ====================
