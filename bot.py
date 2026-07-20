@@ -1058,7 +1058,7 @@ async def relay_customer_message(update: Update, context: ContextTypes.DEFAULT_T
 
     ack = ("🙏 Паёми шумо гирифта шуд. Ба наздикӣ ҷавоб медиҳем."
            if lang == "tj" else "🙏 Ваше сообщение получено. Скоро ответим.")
-    await update.message.reply_text(ack)
+    await update.message.reply_text(ack, reply_markup=main_menu_kb(lang))
 
 
 async def admin_reply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1186,9 +1186,13 @@ async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = " ".join(context.args)
     all_users = context.bot_data.get("all_users", {})
     sent, failed = 0, 0
+    broadcast_text = (
+        f"📢 <b>Паёми расмӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n{text}\n\n"
+        "<i>Паём аз студияи наворбардорӣ SIMO·MEDIA ирсол карда шуд.</i>"
+    )
     for chat_id in list(all_users.keys()):
         try:
-            await context.bot.send_message(chat_id=chat_id, text=f"📢 <b>SIMO.MEDIA</b>\n\n{text}", parse_mode="HTML")
+            await context.bot.send_message(chat_id=chat_id, text=broadcast_text, parse_mode="HTML")
             sent += 1
         except Exception:
             failed += 1
