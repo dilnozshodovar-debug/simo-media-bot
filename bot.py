@@ -15,6 +15,7 @@ SIMO.MEDIA — Telegram bot (нусхаи касбӣ v5)
 import os
 import re
 import random
+import pickle
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -26,6 +27,8 @@ from telegram.ext import (
     ContextTypes,
     MessageHandler,
     ConversationHandler,
+    PicklePersistence,
+    BasePersistence,
     filters,
 )
 from telegram.constants import ChatAction
@@ -1188,7 +1191,7 @@ async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sent, failed = 0, 0
     broadcast_text = (
         f"📢 <b>Паёми расмӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n{text}\n\n"
-        "<i>Паём аз студияи наворбардорӣ SIMO·MEDIA ирсол карда шуд.</i>"
+        "<i>Паём аз студияи наворбардорӣ SIMO·MEDIA ✅ ирсол карда шуд.</i>"
     )
     for chat_id in list(all_users.keys()):
         try:
@@ -1216,12 +1219,119 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 # ==================== MAIN ====================
 
+class RedisPersistence(BasePersistence):
+    """Хотираи доимии бот дар Redis — маълумот байни навсозиҳо гум намешавад."""
+
+    def __init__(self, redis_client, key: str = "simo_media_bot_state"):
+        super().__init__()
+        self.redis = redis_client
+        self.key = key
+        self._data = self._load()
+
+    def _load(self):
+        try:
+            raw = self.redis.get(self.key)
+            if raw:
+                return pickle.loads(raw)
+        except Exception as e:
+            logger.error(f"Хониши Redis нашуд: {e}")
+        return {"bot_data": {}, "chat_data": {}, "user_data": {}, "conversations": {}, "callback_data": None}
+
+    def _save(self):
+        try:
+            self.redis.set(self.key, pickle.dumps(self._data))
+        except Exception as e:
+            logger.error(f"Захира дар Redis нашуд: {e}")
+
+    async def get_bot_data(self):
+        return self._data.get("bot_data", {})
+
+    async def update_bot_data(self, data):
+        self._data["bot_data"] = data
+        self._save()
+
+    async def refresh_bot_data(self, bot_data):
+        pass
+
+    async def get_chat_data(self):
+        return self._data.get("chat_data", {})
+
+    async def update_chat_data(self, chat_id, data):
+        self._data.setdefault("chat_data", {})[chat_id] = data
+        self._save()
+
+    async def refresh_chat_data(self, chat_id, chat_data):
+        pass
+
+    async def drop_chat_data(self, chat_id):
+        self._data.get("chat_data", {}).pop(chat_id, None)
+        self._save()
+
+    async def get_user_data(self):
+        return self._data.get("user_data", {})
+
+    async def update_user_data(self, user_id, data):
+        self._data.setdefault("user_data", {})[user_id] = data
+        self._save()
+
+    async def refresh_user_data(self, user_id, user_data):
+        pass
+
+    async def drop_user_data(self, user_id):
+        self._data.get("user_data", {}).pop(user_id, None)
+        self._save()
+
+    async def get_callback_data(self):
+        return self._data.get("callback_data")
+
+    async def update_callback_data(self, data):
+        self._data["callback_data"] = data
+        self._save()
+
+    async def get_conversations(self, name):
+        return self._data.get("conversations", {}).get(name, {})
+
+    async def update_conversation(self, name, key, new_state):
+        conv = self._data.setdefault("conversations", {}).setdefault(name, {})
+        if new_state is None:
+            conv.pop(key, None)
+        else:
+            conv[key] = new_state
+        self._save()
+
+    async def flush(self):
+        self._save()
+
+
+def build_persistence():
+    """Redis мавҷуд бошад — истифода мешавад (доимӣ). Набошад — файли маҳаллӣ (муваққатӣ)."""
+    redis_url = (
+        os.environ.get("REDIS_URL")
+        or os.environ.get("REDIS_PRIVATE_URL")
+        or os.environ.get("REDISCLOUD_URL")
+    )
+    if redis_url:
+        try:
+            import redis as redis_lib
+            redis_client = redis_lib.Redis.from_url(redis_url)
+            redis_client.ping()
+            print("💾 Хотираи Redis фаъол аст — маълумот доимӣ нигоҳ дошта мешавад.")
+            return RedisPersistence(redis_client)
+        except Exception as e:
+            print(f"⚠️  Пайваст ба Redis муяссар нашуд ({e}) — файли маҳаллӣ истифода мешавад.")
+
+    persistence_path = os.environ.get("PERSISTENCE_PATH", "bot_data.pkl")
+    print("⚠️  REDIS_URL ёфт нашуд — файли маҳаллӣ истифода мешавад (метавонад байни навсозиҳо гум шавад).")
+    return PicklePersistence(filepath=persistence_path)
+
+
 def main():
     if not BOT_TOKEN or BOT_TOKEN == "PUT_YOUR_BOT_TOKEN_HERE":
         print("⚠️  Лутфан аввал BOT_TOKEN-ро дар bot.py ё дар ENV variable гузоред!")
         return
 
-    application = Application.builder().token(BOT_TOKEN).build()
+    persistence = build_persistence()
+    application = Application.builder().token(BOT_TOKEN).persistence(persistence).build()
 
     order_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(choose_package_start, pattern="^choose_")],
