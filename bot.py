@@ -1187,15 +1187,26 @@ async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Истифода: /broadcast Матни паём барои ҳама корбарон")
         return
     text = " ".join(context.args)
+    text_lower = text.lower()
+
+    if any(w in text_lower for w in ["муборак", "табрик", "иди", "солгард"]):
+        header = "🎉 <b>Табрикот!</b>"
+    elif any(w in text_lower for w in ["тахфиф", "акция", "чегирж", "фоиз", "%"]):
+        header = "🔥 <b>Пешниҳоди махсус!</b>"
+    else:
+        header = "📢 <b>Хабари муҳим</b>"
+
     all_users = context.bot_data.get("all_users", {})
     sent, failed = 0, 0
-    broadcast_text = (
-        f"📢 <b>Паёми расмӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n{text}\n\n"
+    broadcast_caption = (
+        f"{header}\n━━━━━━━━━━━━━━━━━━\n\n{text}\n\n"
         "<i>Паём аз студияи наворбардорӣ SIMO·MEDIA ✅ ирсол карда шуд.</i>"
     )
     for chat_id in list(all_users.keys()):
         try:
-            await context.bot.send_message(chat_id=chat_id, text=broadcast_text, parse_mode="HTML")
+            await context.bot.send_photo(
+                chat_id=chat_id, photo=WELCOME_IMAGE_URL, caption=broadcast_caption, parse_mode="HTML"
+            )
             sent += 1
         except Exception:
             failed += 1
