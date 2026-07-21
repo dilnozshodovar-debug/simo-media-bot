@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбӣ v5)
+SIMO.MEDIA — Telegram bot (нусхаи касбӣ v6)
 Ду забон, санҷиши вуруд, идоракунии хатогиҳо, соатҳои корӣ, банер, оморҳо,
 тавсифҳо, тасдиқи фармоиш, санҷиши дастрасии сана, пайгирии фармоиш,
-ёдоварии худкор, паёми умумӣ ба мизоҷон, даъвати дӯстон.
+ёдоварии худкор, паёми умумӣ ба мизоҷон, даъвати дӯстон, хизматрасониҳои иловагӣ.
 
 Барои иҷро:
 1) pip install -r requirements.txt
@@ -80,29 +80,89 @@ REFERRAL_DISCOUNT_PERCENT = 5
 DEPOSIT_AMOUNT = "100 сомонӣ"
 PAYMENT_LINK = "http://pay.expresspay.tj/?A=5058270376098736&s=100&c=&f1=133&FIELD2=&FIELD3="
 
+# ==================== ХИЗМАТРАСОНИҲОИ ИЛОВАГӢ ====================
+
+EXTRA_SERVICES_TEXTS = {
+    "love_story": (
+        "❤️ <b>Love Story (Фотосессияи ошиқона)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Муҳаббати шумо сазовори беҳтарин хотираҳост!\n"
+        "Мо барои шумо фотосессияи ошиқона бо идеяҳои эҷодӣ, ҷойҳои зебо ва коркарди касбии аксҳоро омода мекунем. "
+        "Барои пешниҳод (Proposal), пеш аз тӯй, баъд аз тӯй ё танҳо барои нигоҳ доштани лаҳзаҳои ширини зиндагӣ.\n\n"
+        "✨ <b>Аксҳои табиӣ • Коркарди касбӣ • Сифати олӣ</b>"
+    ),
+    "photo_print": (
+        "🖼 <b>Чопи аксҳо</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Хотираҳоро танҳо дар телефон нигоҳ надоред!\n"
+        "Аксҳои худро бо сифати баланд чоп намуда, ҳамчун туҳфа ё ороиши хона ва идора истифода баред.\n\n"
+        "📏 <b>Андозаҳои гуногун • Рангҳои зинда • Коғази босифат</b>"
+    ),
+    "portraits": (
+        "🎨 <b>Портретҳо</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Наздикони худро бо як туҳфаи махсус шод гардонед.\n"
+        "Мо аз акси шумо портретҳои зебо дар андозаҳои 20×30 то 60×90 омода менамоем.\n\n"
+        "🎁 <b>Беҳтарин туҳфа барои зодрӯз, солгарди издивоҷ ва дигар ҷашнҳо.</b>"
+    ),
+    "ai_videos": (
+        "🤖 <b>Видеоҳои табрикотӣ бо AI</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Табрикоте, ки ҳама аз он ҳайрон мешаванд!\n"
+        "Бо истифода аз технологияҳои зеҳни сунъӣ (AI) барои шумо видеоҳои табрикотии ҷолиб ва замонавӣ таҳия мекунем.\n\n"
+        "🎉 <b>Барои зодрӯз • Тӯй • Хатми мактаб • Ҷашнҳо • Ширкатҳо</b>"
+    ),
+    "promo_clips": (
+        "📢 <b>Роликҳои рекламавӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Бизнеси худро бо рекламаи касбӣ муаррифӣ кунед.\n"
+        "Мо барои бренд, мағоза, тарабхона, маркази хизматрасонӣ ва дигар соҳибкорон роликҳои ҷолиби рекламавӣ омода мекунем.\n\n"
+        "📈 <b>Рекламаи хуб = Мизоҷони бештар</b>"
+    ),
+    "ad_filming": (
+        "🎥 <b>Наворбардории реклама</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Бо камераҳои касбӣ ва таҷҳизоти муосир аз маҳсулот ё хизматрасонии шумо наворбардорӣ мекунем.\n\n"
+        "✨ <b>Навори босифат барои Instagram, TikTok, Facebook ва YouTube.</b>"
+    ),
+    "clips_concerts": (
+        "🎤 <b>Клип ва консерт</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Наворбардорӣ ва монтажи касбии:\n"
+        "🎵 Клипҳои мусиқӣ\n"
+        "🎙 Консертҳо\n"
+        "🎉 Чорабиниҳо\n"
+        "🎓 Маросимҳо\n\n"
+        "<b>Бо сифати баланд ва услуби муосир.</b>"
+    ),
+    "video_editing": (
+        "🎬 <b>Монтажи видео</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+        "Видеоҳои худро ба сатҳи нав бардоред!\n"
+        "Мо ҳама гуна видеоҳоро бо услуби касбӣ монтаж мекунем:\n"
+        "✔️ Instagram Reels\n"
+        "✔️ TikTok\n"
+        "✔️ YouTube\n"
+        "✔️ Видеоҳои таблиғотӣ\n"
+        "✔️ Видеоҳои тӯй ва чорабиниҳо\n"
+        "✔️ Color Grading\n"
+        "✔️ Эффектҳо, матн, мусиқӣ ва логотип"
+    ),
+}
+
 # ==================== МАТНҲО (ду забон) ====================
 
 BTN = {
     "tj": {
         "urgent": "🔥 Фармоиши фаврӣ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
-        "reviews": "⭐ Тавсифҳо", "stats": "📊 Дар рақамҳо", "why": "✨ Чаро маҳз мо?",
-        "faq": "❓ FAQ", "about": "ℹ️ Дар бораи мо", "contact": "📞 Тамос",
+        "extra_services": "🎬 Хизматрасониҳои иловагӣ", "reviews": "⭐ Тавсифҳо", "stats": "📊 Дар рақамҳо",
+        "why": "✨ Чаро маҳз мо?", "faq": "❓ FAQ", "about": "ℹ️ Дар бораи мо", "contact": "📞 Тамос",
         "availability": "📅 Санҷиши сана", "track": "📋 Пайгирии фармоиш",
         "referral": "🎁 Даъвати дӯстон", "compare": "📊 Муқоисаи пакетҳо", "lang": "🇷🇺 На русском",
-        "services": "🎬 Хизматрасониҳои иловагӣ",
-        "back": "⬅️ Ба меню асосӣ", "back_prices": "⬅️ Ба прайс-лист", "back_services": "⬅️ Ба хизматрасониҳо",
+        "back": "⬅️ Ба менюи асосӣ", "back_prices": "⬅️ Ба прайс-лист",
         "order": "✅ Ин пакетро фармоиш медиҳам", "confirm": "✅ Тасдиқ ва фиристодан",
         "restart": "✏️ Аз нав пур кардан", "prev": "⬅️ Қаблӣ", "next": "Баъдӣ ➡️",
         "whatsapp": "💬 WhatsApp", "telegram": "✈️ Telegram", "instagram": "📷 Instagram",
     },
     "ru": {
         "urgent": "🔥 Быстрый заказ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
-        "reviews": "⭐ Отзывы", "stats": "📊 В цифрах", "why": "✨ Почему мы?",
-        "faq": "❓ FAQ", "about": "ℹ️ О нас", "contact": "📞 Контакты",
+        "extra_services": "🎬 Доп. услуги SIMO.MEDIA", "reviews": "⭐ Отзывы", "stats": "📊 В цифрах",
+        "why": "✨ Почему мы?", "faq": "❓ FAQ", "about": "ℹ️ О нас", "contact": "📞 Контакты",
         "availability": "📅 Проверить дату", "track": "📋 Отследить заказ",
         "referral": "🎁 Пригласить друзей", "compare": "📊 Сравнить пакеты", "lang": "🇹🇯 Тоҷикӣ",
-        "services": "🎬 Доп. услуги",
-        "back": "⬅️ Главное меню", "back_prices": "⬅️ К прайс-листу", "back_services": "⬅️ К услугам",
+        "back": "⬅️ Главное меню", "back_prices": "⬅️ К прайс-листу",
         "order": "✅ Заказать этот пакет", "confirm": "✅ Подтвердить и отправить",
         "restart": "✏️ Заполнить заново", "prev": "⬅️ Пред.", "next": "След. ➡️",
         "whatsapp": "💬 WhatsApp", "telegram": "✈️ Telegram", "instagram": "📷 Instagram",
@@ -234,12 +294,6 @@ TEXT = {
                "📷 Для большего количества примеров посетите наш Instagram."),
     },
     "reviews_title": {"tj": "ТАВСИФҲОИ МУШТАРИЁН", "ru": "ОТЗЫВЫ КЛИЕНТОВ"},
-    "services_title": {
-        "tj": ("🎬 <b>ХИЗМАТРАСОНИҲОИ ИЛОВАГИИ SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-               "Лутфан хизматрасонии дилхоҳро интихоб кунед 👇"),
-        "ru": ("🎬 <b>ДОПОЛНИТЕЛЬНЫЕ УСЛУГИ SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-               "Пожалуйста, выберите нужную услугу 👇"),
-    },
     "unknown": {
         "tj": "Лутфан аз тугмаҳои меню истифода баред 👇",
         "ru": "Пожалуйста, используйте кнопки меню 👇",
@@ -434,124 +488,6 @@ PACKAGES = {
     },
 }
 
-SERVICES = {
-    "love_story": {
-        "short": "❤️ Love Story",
-        "text": {
-            "tj": ("❤️ <b>Love Story (Фотосессияи ошиқона)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Муҳаббати шумо сазовори беҳтарин хотираҳост!\n\n"
-                   "Мо барои шумо фотосессияи ошиқона бо идеяҳои эҷодӣ, ҷойҳои зебо ва коркарди "
-                   "касбии аксҳоро омода мекунем. Барои пешниҳод (Proposal), пеш аз тӯй, баъд аз "
-                   "тӯй ё танҳо барои нигоҳ доштани лаҳзаҳои ширини зиндагӣ.\n\n"
-                   "✨ Аксҳои табиӣ • Коркарди касбӣ • Сифати олӣ"),
-            "ru": ("❤️ <b>Love Story (Романтическая фотосессия)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Ваша любовь заслуживает лучших воспоминаний!\n\n"
-                   "Мы подготовим для вас романтическую фотосессию с творческими идеями, красивыми "
-                   "локациями и профессиональной обработкой фотографий. Для предложения руки и сердца "
-                   "(Proposal), до свадьбы, после свадьбы или просто чтобы сохранить тёплые моменты жизни.\n\n"
-                   "✨ Естественные фото • Профессиональная обработка • Высокое качество"),
-        },
-    },
-    "photo_print": {
-        "short": "🖼 Чопи аксҳо",
-        "text": {
-            "tj": ("🖼 <b>Чопи аксҳо</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Хотираҳоро танҳо дар телефон нигоҳ надоред!\n\n"
-                   "Аксҳои худро бо сифати баланд чоп намуда, ҳамчун туҳфа ё ороиши хона ва идора "
-                   "истифода баред.\n\n"
-                   "📏 Андозаҳои гуногун • Рангҳои зинда • Коғази босифат"),
-            "ru": ("🖼 <b>Печать фотографий</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Не храните воспоминания только в телефоне!\n\n"
-                   "Мы напечатаем ваши фото в высоком качестве — используйте их как подарок или "
-                   "украшение для дома и офиса.\n\n"
-                   "📏 Разные размеры • Яркие цвета • Качественная бумага"),
-        },
-    },
-    "portraits": {
-        "short": "🎨 Портретҳо",
-        "text": {
-            "tj": ("🎨 <b>Портретҳо</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Наздикони худро бо як туҳфаи махсус шод гардонед.\n\n"
-                   "Мо аз акси шумо портретҳои зебо дар андозаҳои 20×30 то 60×90 омода менамоем.\n\n"
-                   "🎁 Беҳтарин туҳфа барои зодрӯз, солгарди издивоҷ ва дигар ҷашнҳо."),
-            "ru": ("🎨 <b>Портреты</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Порадуйте близких особенным подарком.\n\n"
-                   "Мы изготовим красивые портреты по вашему фото размером от 20×30 до 60×90.\n\n"
-                   "🎁 Лучший подарок на день рождения, годовщину свадьбы и другие праздники."),
-        },
-    },
-    "ai_video": {
-        "short": "🤖 Видеои табрикотии AI",
-        "text": {
-            "tj": ("🤖 <b>Видеоҳои табрикотӣ бо AI</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Табрикоте, ки ҳама аз он ҳайрон мешаванд!\n\n"
-                   "Бо истифода аз технологияҳои зеҳни сунъӣ (AI) барои шумо видеоҳои табрикотии "
-                   "ҷолиб ва замонавӣ таҳия мекунем.\n\n"
-                   "🎉 Барои зодрӯз • Тӯй • Хатми мактаб • Ҷашнҳо • Ширкатҳо"),
-            "ru": ("🤖 <b>Поздравительные видео с AI</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Поздравление, от которого все будут в восторге!\n\n"
-                   "С использованием технологий искусственного интеллекта (AI) мы создадим для вас "
-                   "яркие и современные поздравительные видео.\n\n"
-                   "🎉 Для дня рождения • Свадьбы • Выпускного • Праздников • Компаний"),
-        },
-    },
-    "ad_video": {
-        "short": "📢 Роликҳои рекламавӣ",
-        "text": {
-            "tj": ("📢 <b>Таҳияи роликҳои рекламавӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Бизнеси худро бо рекламаи касбӣ муаррифӣ кунед.\n\n"
-                   "Мо барои бренд, мағоза, тарабхона, маркази хизматрасонӣ ва дигар соҳибкорон "
-                   "роликҳои ҷолиби рекламавӣ омода мекунем.\n\n"
-                   "📈 Рекламаи хуб = Мизоҷони бештар"),
-            "ru": ("📢 <b>Создание рекламных роликов</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Представьте свой бизнес с профессиональной рекламой.\n\n"
-                   "Мы создаём яркие рекламные ролики для брендов, магазинов, ресторанов, сервисных "
-                   "центров и других предпринимателей.\n\n"
-                   "📈 Хорошая реклама = больше клиентов"),
-        },
-    },
-    "ad_shoot": {
-        "short": "🎥 Наворбардории реклама",
-        "text": {
-            "tj": ("🎥 <b>Наворбардории реклама</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Бо камераҳои касбӣ ва таҷҳизоти муосир аз маҳсулот ё хизматрасонии шумо "
-                   "наворбардорӣ мекунем.\n\n"
-                   "✨ Навори босифат барои Instagram, TikTok, Facebook ва YouTube."),
-            "ru": ("🎥 <b>Рекламная видеосъёмка</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Профессиональными камерами и современным оборудованием снимаем ваш продукт "
-                   "или услугу.\n\n"
-                   "✨ Качественное видео для Instagram, TikTok, Facebook и YouTube."),
-        },
-    },
-    "clip_concert": {
-        "short": "🎤 Клип ва консерт",
-        "text": {
-            "tj": ("🎤 <b>Наворбардорӣ ва монтажи клипу консертҳо</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Наворбардорӣ ва монтажи касбии:\n🎵 Клипҳои мусиқӣ\n🎙 Консертҳо\n"
-                   "🎉 Чорабиниҳо\n🎓 Маросимҳо\n\nБо сифати баланд ва услуби муосир."),
-            "ru": ("🎤 <b>Съёмка и монтаж клипов и концертов</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Профессиональная съёмка и монтаж:\n🎵 Музыкальных клипов\n🎙 Концертов\n"
-                   "🎉 Мероприятий\n🎓 Церемоний\n\nС высоким качеством и современным стилем."),
-        },
-    },
-    "video_edit": {
-        "short": "🎬 Монтажи видео",
-        "text": {
-            "tj": ("🎬 <b>Ҳама намудҳои монтажи видео</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Видеоҳои худро ба сатҳи нав бардоред!\n\n"
-                   "Мо ҳама гуна видеоҳоро бо услуби касбӣ монтаж мекунем:\n"
-                   "✔️ Instagram Reels\n✔️ TikTok\n✔️ YouTube\n✔️ Видеоҳои таблиғотӣ\n"
-                   "✔️ Видеоҳои тӯй ва чорабиниҳо\n✔️ Color Grading\n✔️ Эффектҳо, матн, мусиқӣ ва логотип"),
-            "ru": ("🎬 <b>Все виды монтажа видео</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-                   "Поднимите свои видео на новый уровень!\n\n"
-                   "Мы монтируем любые видео в профессиональном стиле:\n"
-                   "✔️ Instagram Reels\n✔️ TikTok\n✔️ YouTube\n✔️ Рекламные видео\n"
-                   "✔️ Свадебные и праздничные видео\n✔️ Color Grading\n✔️ Эффекты, текст, музыка и логотип"),
-        },
-    },
-}
-
-
 def payment_choice_kb(lang: str):
     b_pay = t("pay_now_btn", lang)
     b_later = t("pay_later_btn", lang)
@@ -622,6 +558,7 @@ def main_menu_kb(lang: str):
         [InlineKeyboardButton(b["urgent"], callback_data="menu_prices")],
         [InlineKeyboardButton(b["prices"], callback_data="menu_prices"),
          InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio")],
+        [InlineKeyboardButton(b["extra_services"], callback_data="menu_extra_services")],
         [InlineKeyboardButton(b["availability"], callback_data="menu_availability"),
          InlineKeyboardButton(b["track"], callback_data="menu_track")],
         [InlineKeyboardButton(b["reviews"], callback_data="rev_0"),
@@ -630,25 +567,33 @@ def main_menu_kb(lang: str):
          InlineKeyboardButton(b["faq"], callback_data="menu_faq")],
         [InlineKeyboardButton(b["about"], callback_data="menu_about"),
          InlineKeyboardButton(b["referral"], callback_data="menu_referral")],
-        [InlineKeyboardButton(b["services"], callback_data="menu_services")],
         [InlineKeyboardButton(b["contact"], callback_data="menu_contact")],
         [InlineKeyboardButton(b["lang"], callback_data="toggle_lang")],
     ]
     return InlineKeyboardMarkup(kb)
 
 
-def services_menu_kb(lang: str):
+def extra_services_kb(lang: str):
     b = BTN[lang]
-    kb = [[InlineKeyboardButton(svc["short"], callback_data=f"srv_{key}")] for key, svc in SERVICES.items()]
-    kb.append([InlineKeyboardButton(b["back"], callback_data="menu_main")])
+    kb = [
+        [InlineKeyboardButton("❤️ Love Story", callback_data="extra_svc_love_story")],
+        [InlineKeyboardButton("🖼 Чопи аксҳо", callback_data="extra_svc_photo_print")],
+        [InlineKeyboardButton("🎨 Портретҳо", callback_data="extra_svc_portraits")],
+        [InlineKeyboardButton("🤖 Видеоҳои табрикотӣ бо AI", callback_data="extra_svc_ai_videos")],
+        [InlineKeyboardButton("📢 Таҳияи роликҳои рекламавӣ", callback_data="extra_svc_promo_clips")],
+        [InlineKeyboardButton("🎥 Наворбардории реклама", callback_data="extra_svc_ad_filming")],
+        [InlineKeyboardButton("🎤 Клип ва консертҳо", callback_data="extra_svc_clips_concerts")],
+        [InlineKeyboardButton("🎬 Ҳама намудҳои монтажи видео", callback_data="extra_svc_video_editing")],
+        [InlineKeyboardButton(b["back"], callback_data="menu_main")],
+    ]
     return InlineKeyboardMarkup(kb)
 
 
-def service_detail_kb(srv_key: str, lang: str):
+def extra_service_detail_kb(svc_key: str, lang: str):
     b = BTN[lang]
     kb = [
-        [InlineKeyboardButton(b["order"], callback_data=f"choose_{srv_key}")],
-        [InlineKeyboardButton(b["back_services"], callback_data="menu_services")],
+        [InlineKeyboardButton("✍️ Фармоиш диҳед", callback_data=f"order_extra_{svc_key}")],
+        [InlineKeyboardButton("⬅️ Бозгашт ба хизматрасониҳо", callback_data="menu_extra_services")],
     ]
     return InlineKeyboardMarkup(kb)
 
@@ -813,6 +758,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.pop("awaiting", None)
         await safe_edit(query, t("welcome", lang), main_menu_kb(lang), media_url=WELCOME_IMAGE_URL)
 
+    elif data == "menu_extra_services":
+        text = ("🎬 <b>Хизматрасониҳои иловагии SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                "Лутфан, барои гирифтани маълумоти пурра яке аз бахшҳои зеринро интихоб кунед:")
+        await safe_edit(query, text, extra_services_kb(lang))
+
+    elif data.startswith("extra_svc_"):
+        svc_key = data[len("extra_svc_"):]
+        svc_text = EXTRA_SERVICES_TEXTS.get(svc_key, "")
+        if svc_text:
+            await safe_edit(query, svc_text, extra_service_detail_kb(svc_key, lang))
+
+    elif data.startswith("order_extra_"):
+        svc_key = data[len("order_extra_"):]
+        order_text = (
+            "✅ <b>Ташаккур барои таваҷҷӯҳатон!</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+            "Барои сабти фармоиш ё машварат бо мо дар тамос шавед:\n\n"
+            f"📞 <b>Телефон:</b> {CONTACT_PHONE_DISPLAY}\n"
+            f"✈️ <b>Telegram:</b> {TELEGRAM_USERNAME}\n"
+            f"💬 <b>WhatsApp:</b> <a href='{WHATSAPP_LINK}'>Фиристодани паём</a>"
+        )
+        await safe_edit(query, order_text, extra_service_detail_kb(svc_key, lang))
+
     elif data == "menu_prices":
         await safe_edit(query, t("prices_title", lang), prices_menu_kb(lang))
 
@@ -859,15 +826,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pkg = PACKAGES.get(pkg_key)
         if pkg:
             await safe_edit(query, pkg["text"][lang], package_detail_kb(pkg_key, lang))
-
-    elif data == "menu_services":
-        await safe_edit(query, t("services_title", lang), services_menu_kb(lang))
-
-    elif data.startswith("srv_"):
-        srv_key = data[len("srv_"):]
-        svc = SERVICES.get(srv_key)
-        if svc:
-            await safe_edit(query, svc["text"][lang], service_detail_kb(srv_key, lang))
 
 
 async def awaiting_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -932,7 +890,7 @@ async def choose_package_start(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     lang = get_lang(context)
     pkg_key = query.data[len("choose_"):]
-    pkg = PACKAGES.get(pkg_key) or SERVICES.get(pkg_key)
+    pkg = PACKAGES.get(pkg_key)
     if not pkg:
         return ConversationHandler.END
 
@@ -1342,7 +1300,7 @@ async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if any(w in text_lower for w in ["муборак", "табрик", "иди", "солгард"]):
         header = "🎉 <b>Табрикот!</b>"
-    elif any(w in text_lower for w in ["тахфиф", "акция", "чегирж", "фоиз", "%"]):
+    elif any(w in text_lower for w in ["тахфиф", "акция", "чегирма", "фоиз", "%"]):
         header = "🔥 <b>Пешниҳоди махсус!</b>"
     else:
         header = "📢 <b>Хабари муҳим</b>"
@@ -1541,129 +1499,7 @@ def main():
 
     print("🤖 SIMO.MEDIA bot кор карда истодааст...")
     application.run_polling()
-    
-# =============================================================
-# БАХШИ ХИЗМАТРАСОНИҲОИ ИЛОВАГИИ SIMO.MEDIA
-# =============================================================
-
-SERVICES_TEXTS = {
-    "love_story": (
-        "❤️ *Love Story (Фотосессияи ошиқона)*\n\n"
-        "Муҳаббати шумо сазовори беҳтарин хотираҳост!\n"
-        "Мо барои шумо фотосессияи ошиқона бо идеяҳои эҷодӣ, ҷойҳои зебо ва коркарди касбии аксҳоро омода мекунем. "
-        "Барои пешниҳод (Proposal), пеш аз тӯй, баъд аз тӯй ё танҳо барои нигоҳ доштани лаҳзаҳои ширини зиндагӣ.\n\n"
-        "✨ Аксҳои табиӣ • Коркарди касбӣ • Сифати олӣ"
-    ),
-    "photo_print": (
-        "🖼 *Чопи аксҳо*\n\n"
-        "Хотираҳоро танҳо дар телефон нигоҳ надоред!\n"
-        "Аксҳои худро бо сифати баланд чоп намуда, ҳамчун туҳфа ё ороиши хона ва идора истифода баред.\n\n"
-        "📏 Андозаҳои гуногун • Рангҳои зинда • Коғази босифат"
-    ),
-    "portraits": (
-        "🎨 *Портретҳо*\n\n"
-        "Наздикони худро бо як туҳфаи махсус шод гардонед.\n"
-        "Мо аз акси шумо портретҳои зебо дар андозаҳои 20×30 то 60×90 омода менамоем.\n\n"
-        "🎁 Беҳтарин туҳфа барои зодрӯз, солгарди издивоҷ ва дигар ҷашнҳо."
-    ),
-    "ai_videos": (
-        "🤖 *Видеоҳои табрикотӣ бо AI*\n\n"
-        "Табрикоте, ки ҳама аз он ҳайрон мешаванд!\n"
-        "Бо истифода аз технологияҳои зеҳни сунъӣ (AI) барои шумо видеоҳои табрикотии ҷолиб ва замонавӣ таҳия мекунем.\n\n"
-        "🎉 Барои зодрӯз • Тӯй • Хатми мактаб • Ҷашнҳо • Ширкатҳо"
-    ),
-    "promo_clips": (
-        "📢 *Роликҳои рекламавӣ*\n\n"
-        "Бизнеси худро бо рекламаи касбӣ муаррифӣ кунед.\n"
-        "Мо барои бренд, мағоза, тарабхона, маркази хизматрасонӣ ва дигар соҳибкорон роликҳои ҷолиби рекламавӣ омода мекунем.\n\n"
-        "📈 Рекламаи хуб = Мизоҷони бештар"
-    ),
-    "ad_filming": (
-        "🎥 *Наворбардории реклама*\n\n"
-        "Бо камераҳои касбӣ ва таҷҳизоти муосир аз маҳсулот ё хизматрасонии шумо наворбардорӣ мекунем.\n\n"
-        "✨ Навори босифат барои Instagram, TikTok, Facebook ва YouTube."
-    ),
-    "clips_concerts": (
-        "🎤 *Клип ва консерт*\n\n"
-        "Наворбардорӣ ва монтажи касбии:\n"
-        "🎵 Клипҳои мусиқӣ\n"
-        "🎙 Консертҳо\n"
-        "🎉 Чорабиниҳо\n"
-        "🎓 Маросимҳо\n\n"
-        "Бо сифати баланд ва услуби муосир."
-    ),
-    "video_editing": (
-        "🎬 *Монтажи видео*\n\n"
-        "Видеоҳои худро ба сатҳи нав бардоред!\n"
-        "Мо ҳама гуна видеоҳоро бо услуби касбӣ монтаж мекунем:\n"
-        "✔️ Instagram Reels\n"
-        "✔️ TikTok\n"
-        "✔️ YouTube\n"
-        "✔️ Видеоҳои таблиғотӣ\n"
-        "✔️ Видеоҳои тӯй ва чорабиниҳо\n"
-        "✔️ Color Grading\n"
-        "✔️ Эффектҳо, матн, мусиқӣ ва логотип"
-    ),
-}
-
-def extra_services_menu(update: Update, context: CallbackContext):
-    """Менюи тугмаҳои хизматрасониҳои иловагӣ"""
-    keyboard = [
-        [InlineKeyboardButton("❤️ Love Story", callback_data="service_love_story")],
-        [InlineKeyboardButton("🖼 Чопи аксҳо", callback_data="service_photo_print")],
-        [InlineKeyboardButton("🎨 Портретҳо", callback_data="service_portraits")],
-        [InlineKeyboardButton("🤖 Видеоҳои табрикотӣ бо AI", callback_data="service_ai_videos")],
-        [InlineKeyboardButton("📢 Таҳияи роликҳои рекламавӣ", callback_data="service_promo_clips")],
-        [InlineKeyboardButton("🎥 Наворбардории реклама", callback_data="service_ad_filming")],
-        [InlineKeyboardButton("🎤 Клип ва консертҳо", callback_data="service_clips_concerts")],
-        [InlineKeyboardButton("🎬 Ҳама намудҳои монтажи видео", callback_data="service_video_editing")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    text = "🎬 *Хизматрасониҳои иловагии SIMO.MEDIA*\n\nЛутфан, барои гирифтани маълумоти пурра яке аз бахшҳои зеринро интихоб кунед:"
-
-    if update.callback_query:
-        update.callback_query.message.edit_text(text, reply_markup=reply_markup, parse_mode="Markdown")
-    else:
-        update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
-
-
-def handle_service_details(update: Update, context: CallbackContext):
-    """Намоиши тафсилоти хизматрасонӣ"""
-    query = update.callback_query
-    query.answer()
-
-    service_key = query.data.replace("service_", "")
-
-    if service_key in SERVICES_TEXTS:
-        message_text = SERVICES_TEXTS[service_key]
-        keyboard = [
-            [InlineKeyboardButton("✍️ Фармоиш диҳед", callback_data=f"order_{service_key}")],
-            [InlineKeyboardButton("⬅️ Бозгашт ба хизматрасониҳо", callback_data="back_to_extra_services")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        query.edit_message_text(text=message_text, reply_markup=reply_markup, parse_mode="Markdown")
-
-
-def handle_order_button(update: Update, context: CallbackContext):
-    """Раванди пахши тугмаи фармоиш"""
-    query = update.callback_query
-    query.answer()
-    
-    order_text = (
-        "✅ *Ташаккур барои таваҷҷӯҳатон!*\n\n"
-        "Барои сабти фармоиш ё машварат бо мо дар тамос шавед:\n"
-        "📞 **Телефон:** +992 93 882 97 96\n"
-        "💬 **Телеграм:** @SIMO_MEDIA_ADMIN"
-    )
-    keyboard = [[InlineKeyboardButton("⬅️ Бозгашт ба хизматрасониҳо", callback_data="back_to_extra_services")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    query.edit_message_text(text=order_text, reply_markup=reply_markup, parse_mode="Markdown")
 
 
 if __name__ == "__main__":
-    main(    dp.add_handler(MessageHandler(Filters.regex('^(🎬 Хизматрасониҳои иловагии SIMO.MEDIA|Хизматрасониҳои иловагӣ)$'), extra_services_menu))
-    dp.add_handler(CallbackQueryHandler(handle_service_details, pattern='^service_'))
-    dp.add_handler(CallbackQueryHandler(extra_services_menu, pattern='^back_to_extra_services$'))
-    dp.add_handler(CallbackQueryHandler(handle_order_button, pattern='^order_'))
-)
+    main()
