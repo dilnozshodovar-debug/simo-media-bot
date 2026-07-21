@@ -496,7 +496,6 @@ def main_menu_kb(lang: str):
         [InlineKeyboardButton(b["urgent"], callback_data="menu_prices")],
         [InlineKeyboardButton(b["prices"], callback_data="menu_prices"),
          InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio")],
-        [InlineKeyboardButton(b["compare"], callback_data="menu_compare")],
         [InlineKeyboardButton(b["availability"], callback_data="menu_availability"),
          InlineKeyboardButton(b["track"], callback_data="menu_track")],
         [InlineKeyboardButton(b["reviews"], callback_data="rev_0"),
