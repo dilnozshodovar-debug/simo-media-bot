@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v15 Master)
-- Иловаи Имзои Электронии Рақамӣ (Digital Signature Stamp) дар PDF
+SIMO.MEDIA — Telegram bot (нусхаи мукаммали v17 Redis Master)
+- Пайвасти худкор бо Пойгоҳи Абрии Redis (Беҳамто дар бехатарии маълумот)
+- Сабти худкори омор ба Redis ҳар 60 сония ва ҳангоми ҳар як фармоиш
+- Имзои Электронии Рақамӣ (Digital Signature) дар PDF
 - Календари озода ва саҳеҳ
-- Бехатарии 100% аз гум шудани омор ва маълумоти мизоҷон (/exportdb & /importdb)
-- PDF Шартнома бе квадратҳои сиёҳ
-- Командаҳои пурраи Админ ва Хизматрасониҳо
+- Тамоми командаҳои Админ: /stats, /status, /setprogress, /booked, /freedate, /broadcast, /addpromo
 """
 
 import os
@@ -35,18 +35,54 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
+# Модул барои Redis
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
-# ==================== ТАНЗИМИ ПАЙГИРИИ ХОТИРА ВА ШРИФТ ====================
+# ==================== ТАНЗИМОТИ REDIS ВА ПАЙГИРИИ ХОТИРА ====================
+
+REDIS_URL = os.environ.get("REDIS_URL")
 
 def get_persistence_path():
     if os.path.exists("/data") and os.access("/data", os.W_OK):
         return "/data/bot_data.pkl"
     return "bot_data.pkl"
+
+def restore_from_redis_if_available(filepath):
+    """Агар Redis фаъол бошад, оморро ҳангоми restart аз Redis хонда ба диск менависад"""
+    if REDIS_AVAILABLE and REDIS_URL:
+        try:
+            r = redis.from_url(REDIS_URL)
+            data = r.get("simo_bot_data")
+            if data:
+                with open(filepath, "wb") as f:
+                    f.write(data)
+                logger.info("✅ Маълумотҳо бомуваффақият аз Redis барқарор шуданд!")
+        except Exception as e:
+            logger.error(f"Хато дар хондани Redis: {e}")
+
+def sync_to_redis(bot_data_dict):
+    """Сабти мустақими омор ба Redis"""
+    if REDIS_AVAILABLE and REDIS_URL:
+        try:
+            r = redis.from_url(REDIS_URL)
+            r.set("simo_bot_data", pickle.dumps(dict(bot_data_dict)))
+            logger.info("💾 Маълумот ба Redis сабт шуд.")
+        except Exception as e:
+            logger.error(f"Хато дар сабт ба Redis: {e}")
+
+async def redis_auto_sync_job(context: ContextTypes.DEFAULT_TYPE):
+    """Функсияи худкор, ки ҳар 1 дақиқа оморро ба Redis мефиристад"""
+    sync_to_redis(context.bot_data)
 
 FONT_NAME = "Helvetica"
 
@@ -79,7 +115,6 @@ TELEGRAM_LINK = "https://t.me/editor2202"
 INSTAGRAM_LINK = "https://www.instagram.com/iam_shodovar?igsh=Z3g1NHhrOXM5NGdl"
 
 WELCOME_IMAGE_URL = "https://raw.githubusercontent.com/dilnozshodovar-debug/simo-media-bot/main/logo.png"
-ABOUT_IMAGE_URL = "https://raw.githubusercontent.com/dilnozshodovar-debug/simo-media-bot/main/about.jpg"
 
 DEFAULT_REVIEWS = [
     {"name": "Фарзона ва Илҳом", "stars": "⭐⭐⭐⭐⭐",
@@ -339,9 +374,9 @@ def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_st
     p.drawString(50, 432, t2)
     p.drawString(50, 414, t3)
 
-    # --- ИЛОВАИ ИМЗОИ ЭЛЕКТРОНИИ РАҚАМӢ (DIGITAL SIGNATURE STAMP) ---
+    # ИЛОВАИ ИМЗОИ ЭЛЕКТРОНИИ РАҚАМӢ
     p.setLineWidth(1)
-    p.setStrokeColorRGB(0.1, 0.5, 0.2) # Чорчӯбаи сабзи касбӣ
+    p.setStrokeColorRGB(0.1, 0.5, 0.2)
     p.rect(50, 290, 500, 75)
     
     if has_custom_font:
@@ -425,6 +460,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(context)
     user = update.effective_user
     context.bot_data.setdefault("all_users", {})[user.id] = {"name": user.full_name, "username": user.username}
+    sync_to_redis(context.bot_data)
 
     try:
         await update.message.reply_photo(
@@ -674,6 +710,9 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE, user_i
         "p1": 100, "p2": 0, "p3": 0, "p4": 0
     }
 
+    # Сабти фаврӣ ба Redis
+    sync_to_redis(context.bot_data)
+
     await message_obj.reply_document(
         document=InputFile(pdf_buffer, filename=f"Contract_{order_number}.pdf"),
         caption=f"{t('order_accepted', lang)}\n\n{t('order_thanks', lang)}",
@@ -717,6 +756,7 @@ async def cmd_importdb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_path = get_persistence_path()
         file = await update.message.document.get_file()
         await file.download_to_drive(db_path)
+        sync_to_redis(context.bot_data)
         await update.message.reply_text("✅ <b>Маълумотҳо бомуваффақият барқарор шуданд!</b>", parse_mode="HTML")
 
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -750,12 +790,83 @@ async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
             failed += 1
     await update.message.reply_text(f"✅ Паём ба {sent} корбар фиристода шуд. Хатогӣ: {failed}.")
 
-# ==================== MAIN ====================
+async def cmd_booked(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    booked = context.bot_data.get("booked_dates", {})
+    if not booked:
+        await update.message.reply_text("Ягон сана банд нест.")
+        return
+    lines = [f"📅 {date} — {order}" for date, order in sorted(booked.items())]
+    await update.message.reply_text("📋 <b>Санаҳои банд:</b>\n\n" + "\n".join(lines), parse_mode="HTML")
+
+async def cmd_freedate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if not context.args:
+        await update.message.reply_text("Истифода: /freedate 15.08.2026")
+        return
+    date_str = context.args[0]
+    booked = context.bot_data.get("booked_dates", {})
+    if date_str in booked:
+        del booked[date_str]
+        sync_to_redis(context.bot_data)
+        await update.message.reply_text(f"✅ Санаи {date_str} озод карда шуд.")
+    else:
+        await update.message.reply_text(f"Санаи {date_str} дар рӯйхати банд нест.")
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if len(context.args) < 2:
+        await update.message.reply_text("Истифода: /status SM-1234 Тасдиқшуда")
+        return
+    order_num = context.args[0].upper()
+    new_status = " ".join(context.args[1:])
+    orders = context.bot_data.get("orders", {})
+    if order_num in orders:
+        orders[order_num]["status"] = new_status
+        sync_to_redis(context.bot_data)
+        await update.message.reply_text(f"✅ Ҳолати {order_num} иваз шуд ба: {new_status}")
+    else:
+        await update.message.reply_text("❌ Фармоиш ёфт нашуд.")
+
+async def cmd_addpromo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if len(context.args) < 2:
+        await update.message.reply_text("Истифода: /addpromo SIMO2026 15")
+        return
+    code, percent = context.args[0].upper(), int(context.args[1])
+    context.bot_data.setdefault("promos", {})[code] = percent
+    sync_to_redis(context.bot_data)
+    await update.message.reply_text(f"✅ Промокоди {code} бо чегирмаи {percent}% фаъол шуд.")
+
+async def cmd_setprogress(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if len(context.args) < 5:
+        await update.message.reply_text("Истифода: /setprogress SM-1234 100 100 50 0")
+        return
+    order_num = context.args[0].upper()
+    p1, p2, p3, p4 = map(int, context.args[1:5])
+    orders = context.bot_data.get("orders", {})
+    if order_num in orders:
+        orders[order_num].update({"p1": p1, "p2": p2, "p3": p3, "p4": p4})
+        sync_to_redis(context.bot_data)
+        await update.message.reply_text(f"✅ Прогресси {order_num} навсозӣ шуд.")
+    else:
+        await update.message.reply_text("❌ Фармоиш ёфт нашуд.")
+
+# ==================== MAIN (ТАМОМИ КОМАНДАҲО) ====================
 
 def main():
     persistence_file = get_persistence_path()
+    
+    # Барқарорсозии маълумот аз Redis ба файли локалӣ ҳангоми оғоз
+    restore_from_redis_if_available(persistence_file)
+    
     persistence = PicklePersistence(filepath=persistence_file)
     application = Application.builder().token(BOT_TOKEN).persistence(persistence).build()
+
+    # Ташкили таймери худкори сабт ба Redis (ҳар 60 сония)
+    if application.job_queue:
+        application.job_queue.run_repeating(redis_auto_sync_job, interval=60, first=10)
 
     order_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(choose_package_start, pattern="^choose_")],
@@ -773,12 +884,18 @@ def main():
         fallbacks=[],
     )
 
+    # САБТИ ТАМОМИ КОМАНДАҲОИ АДМИНӢ ВА АСОСӢ
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("menu", start))
     application.add_handler(CommandHandler("stats", cmd_stats))
     application.add_handler(CommandHandler("exportdb", cmd_exportdb))
     application.add_handler(MessageHandler(filters.Document.ALL & filters.User(user_id=ADMIN_IDS), cmd_importdb))
     application.add_handler(CommandHandler("broadcast", cmd_broadcast))
+    application.add_handler(CommandHandler("booked", cmd_booked))
+    application.add_handler(CommandHandler("freedate", cmd_freedate))
+    application.add_handler(CommandHandler("status", cmd_status))
+    application.add_handler(CommandHandler("addpromo", cmd_addpromo))
+    application.add_handler(CommandHandler("setprogress", cmd_setprogress))
     
     application.add_handler(order_conv)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_tracking))
