@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v11 Master)
-Ду забон, FSM, Календари интерактивӣ, Прогресс-бари фармоиш,
-PDF Шартнома ва Чек бо шрифти тоҷикии Unicode (NotoSans/DejaVu),
-Командаҳои пурраи Админ, Системаи Промокодҳо ва Тавсифҳо.
+SIMO.MEDIA — Telegram bot (нусхаи касбии v12 Master)
+Ислоҳи садфоизаи шрифти тоҷикӣ дар PDF (System /tmp directory),
+Календари интерактивӣ, Прогресс-бар, Командаҳои Админ ва Тавсифҳо.
 
 Барои иҷро:
 1) pip install -r requirements.txt
@@ -18,6 +17,7 @@ import ssl
 import random
 import pickle
 import logging
+import tempfile
 import calendar
 import urllib.request
 from datetime import datetime, timezone, timedelta
@@ -47,50 +47,66 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ==================== ТАНЗИМИ БОЭЪТИМОДИ ШРИФТИ ТОҶИКӢ БАРОИ PDF ====================
+# ==================== ТАНЗИМИ САДФОИЗАИ ШРИФТИ ТОҶИКӢ БАРОИ PDF ====================
 
 FONT_NAME = "Helvetica"
 
 def init_pdf_font():
     global FONT_NAME
-    font_filename = "TajikFont.ttf"
     
-    if not os.path.exists(font_filename) or os.path.getsize(font_filename) < 10000:
-        urls = [
-            "https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Regular.ttf",
-            "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf",
-            "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf",
-        ]
-        
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        for url in urls:
-            try:
-                logger.info(f"Кӯшиши боргирии шрифт аз: {url}")
-                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
-                    data = resp.read()
-                    if len(data) > 10000:
-                        with open(font_filename, 'wb') as f:
-                            f.write(data)
-                        logger.info("Шрифти тоҷикӣ бомуваффақият омода шуд!")
-                        break
-            except Exception as e:
-                logger.error(f"Хатогӣ ҳангоми боргирии шрифт аз {url}: {e}")
+    # Истифодаи папкаи муваққатии системавӣ (/tmp), ки дар Railway ҳамеша иҷозати сабт дорад
+    temp_dir = tempfile.gettempdir()
+    font_filename = os.path.join(temp_dir, "TajikFont.ttf")
+    
+    # 1. Агар шрифти маҳаллӣ дар GitHub бошад
+    if os.path.exists("DejaVuSans.ttf") and os.path.getsize("DejaVuSans.ttf") > 10000:
+        try:
+            pdfmetrics.registerFont(TTFont("TajikFont", "DejaVuSans.ttf"))
+            FONT_NAME = "TajikFont"
+            logger.info("Шрифти DejaVuSans аз репозитория сабт шуд.")
+            return "TajikFont"
+        except Exception as e:
+            logger.error(f"Хатогии сабти шрифти маҳаллӣ: {e}")
 
+    # 2. Агар аллакай ба /tmp боргирӣ шуда бошад
     if os.path.exists(font_filename) and os.path.getsize(font_filename) > 10000:
         try:
             pdfmetrics.registerFont(TTFont("TajikFont", font_filename))
             FONT_NAME = "TajikFont"
-            logger.info("Шрифти TajikFont (Unicode) ба ReportLab сабт гардид!")
+            return "TajikFont"
         except Exception as e:
-            logger.error(f"Хатогӣ ҳангоми сабти шрифт дар ReportLab: {e}")
-    else:
-        logger.error("⚠️ ҲОЛАТИ ХАТАР: Шрифти Unicode пайдо нашуд!")
+            logger.error(f"Хатогии сабти шрифти /tmp: {e}")
 
-# Роҳандозии шрифт ҳангоми боргирии скрипт
+    # 3. Боргирии мустақим ба /tmp
+    urls = [
+        "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf",
+        "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf",
+        "https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Regular.ttf"
+    ]
+    
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    
+    for url in urls:
+        try:
+            logger.info(f"Боргирии шрифт ба {font_filename} аз {url}...")
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+                data = resp.read()
+                if len(data) > 10000:
+                    with open(font_filename, 'wb') as f:
+                        f.write(data)
+                    pdfmetrics.registerFont(TTFont("TajikFont", font_filename))
+                    FONT_NAME = "TajikFont"
+                    logger.info("Шрифти тоҷикӣ бомуваффақият сабт шуд!")
+                    return "TajikFont"
+        except Exception as e:
+            logger.error(f"Хатогӣ дар боргирии шрифт аз {url}: {e}")
+
+    return "Helvetica"
+
+# Гузоштани шрифт дар оғоз
 init_pdf_font()
 
 # ==================== ТАНЗИМОТИ АСОСӢ ====================
@@ -401,10 +417,7 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
 # ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF ====================
 
 def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_status):
-    if FONT_NAME == "Helvetica":
-        init_pdf_font()
-        
-    font_to_use = FONT_NAME
+    font_to_use = init_pdf_font()
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     
