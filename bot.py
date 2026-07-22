@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v13 Master)
-Бехатарии 100% аз квадратҳои сиёҳ дар PDF,
-Календари интерактивӣ, Прогресс-бар, Командаҳои Админ ва Тавсифҳо.
+SIMO.MEDIA — Telegram bot (нусхаи касбии v14 Master)
+- Календари озода ва саҳеҳ (бе пӯшонидани рақамҳо)
+- Бехатарии 100% аз гум шудани омор ва маълумоти мизоҷон (/exportdb & /importdb)
+- PDF Шартнома бе квадратҳои сиёҳ
+- Командаҳои пурраи Админ ва Хизматрасониҳо
 """
 
 import os
@@ -38,13 +40,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ==================== ТАНЗИМИ ШРИФТ ====================
+# ==================== ТАНЗИМИ ПАЙГИРИИ ХОТИРА ВА ШРИФТ ====================
+
+def get_persistence_path():
+    # Агар дар Railway Volume (/data) бошад, он ҷо нигоҳ медорад
+    if os.path.exists("/data") and os.access("/data", os.W_OK):
+        return "/data/bot_data.pkl"
+    return "bot_data.pkl"
 
 FONT_NAME = "Helvetica"
 
 def get_pdf_font():
     global FONT_NAME
-    # Санҷиши мавҷудияти шрифти маҳаллӣ дар GitHub
     possible_files = ["DejaVuSans.ttf", "TajikFont.ttf", "arial.ttf"]
     for font_file in possible_files:
         if os.path.exists(font_file) and os.path.getsize(font_file) > 10000:
@@ -228,7 +235,7 @@ TEXT = {
     "ask_name": {"tj": "📝 <b>Қадами 1/4</b> — Лутфан <b>номи худро</b> нависед:", "ru": "📝 <b>Шаг 1/4</b> — Напишите <b>ваше имя</b>:"},
     "ask_phone": {"tj": "📱 <b>Қадами 2/4</b> — Лутфан рақами телефони худро нависед (масалан 93 882 97 96):", "ru": "📱 <b>Шаг 2/4</b> — Напишите ваш номер телефона:"},
     "phone_invalid": {"tj": "⚠️ Рақами телефон нодуруст аст. Лутфан танҳо рақамҳо нависед:", "ru": "⚠️ Неверный номер телефона:"},
-    "ask_date_cal": {"tj": "📅 <b>Қадами 3/4</b> — Лутфан <b>санаи тӯйро аз календари зерин интихоб кунед</b>:\n\n🟢 — Санаи озод\n🔴 — Санаи банд", "ru": "📅 <b>Шаг 3/4</b> — Выберите <b>дату свадьбы из календаря</b>:\n\n🟢 — Свободно\n🔴 — Занято"},
+    "ask_date_cal": {"tj": "📅 <b>Қадами 3/4</b> — Лутфан <b>санаи тӯйро аз календари зерин интихоб кунед</b>:\n\nРақамҳо (1, 2, 3...) — Санаи озод\n🔴 — Санаи банд", "ru": "📅 <b>Шаг 3/4</b> — Выберите <b>дату свадьбы из календаря</b>:\n\nЦифры (1, 2, 3...) — Свободно\n🔴 — Занято"},
     "ask_payment": {"tj": f"💳 <b>Қадами 4/4</b> — Оё ҳоло мехоҳед пешпардохт кунед?\n\nБарои мустаҳкам кардани ҷои шумо дар санаи интихобшуда, тавсия медиҳем {DEPOSIT_AMOUNT} пешпардохт кунед ва чекро фиристед.", "ru": f"💳 <b>Шаг 4/4</b> — Хотите внести предоплату сейчас?\n\nПредоплата: {DEPOSIT_AMOUNT}"},
     "pay_now_btn": {"tj": "✅ Ҳоло мехоҳам пардохт кунам", "ru": "✅ Хочу оплатить сейчас"},
     "pay_later_btn": {"tj": "⏳ Дертар пардохт мекунам", "ru": "⏳ Оплачу позже"},
@@ -323,7 +330,7 @@ def validate_phone(text: str) -> bool:
     digits = re.sub(r"[^\d]", "", text)
     return 7 <= len(digits) <= 15
 
-# ==================== ГЕНЕРАТОРИ КИБОРД ДАР КАЛЕНДАР ====================
+# ==================== ГЕНЕРАТОРИ КИБОРД ДАР КАЛЕНДАР (РАВШАН ВА САҲЕҲ) ====================
 
 def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
     kb = []
@@ -343,8 +350,11 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
             else:
                 date_str = f"{day:02d}.{month:02d}.{year}"
                 is_booked = date_str in booked_dates
-                icon = "🔴" if is_booked else "🟢"
-                row.append(InlineKeyboardButton(f"{icon}{day}", callback_data=f"cal_date_{date_str}"))
+                if is_booked:
+                    btn_text = f"{day} 🔴"
+                else:
+                    btn_text = f"{day}"
+                row.append(InlineKeyboardButton(btn_text, callback_data=f"cal_date_{date_str}"))
         kb.append(row)
         
     prev_month = month - 1 if month > 1 else 12
@@ -358,7 +368,7 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
     ])
     return InlineKeyboardMarkup(kb)
 
-# ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF (БЕ КВАДРАТҲОИ СИЁҲ) ====================
+# ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF ====================
 
 def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_status):
     font_name, has_custom_font = get_pdf_font()
@@ -366,7 +376,6 @@ def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_st
     p = canvas.Canvas(buffer, pagesize=letter)
     
     if has_custom_font:
-        # Агар файли DejaVuSans.ttf дар GitHub омода бошад — пурра бо тоҷикии кириллӣ
         title = "ШАРТНОМАИ РАСМИИ SIMO.MEDIA"
         subtitle = "Студияи наворбардорӣ ва таҳияи контент"
         lbl_order = f"Рақами фармоиш: {order_num}"
@@ -384,7 +393,6 @@ def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_st
         lbl_exec = "Роҳбари студия: Шодовар Нуриддинов"
         lbl_sign = "Имзои мизоҷ: ____________"
     else:
-        # Агар шрифт набошад — бо матни озодаву фаҳмои лотинӣ (бидуни ҳеҷ як квадратча!)
         title = "SIMO.MEDIA - SHARTNOMAI RASMI"
         subtitle = "Studioi navorbardori va tahiyai content"
         lbl_order = f"Raqami farmoish: {order_num}"
@@ -544,7 +552,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         now = datetime.now()
         booked = context.bot_data.get("booked_dates", {})
         kb = generate_calendar_keyboard(now.year, now.month, booked)
-        await query.edit_message_caption(caption="📅 <b>Календари санҷиши сана:</b>\n\n🟢 — Санаи озод\n🔴 — Санаи банд", reply_markup=kb, parse_mode="HTML")
+        await query.edit_message_caption(caption="📅 <b>Календари санҷиши сана:</b>\n\nРақамҳо (1, 2, 3...) — Санаи озод\n🔴 — Санаи банд", reply_markup=kb, parse_mode="HTML")
 
     elif data.startswith("cal_nav_"):
         _, _, y, m = data.split("_")
@@ -762,10 +770,35 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
 
     return ConversationHandler.END
 
-# ==================== КОМАНДАҲОИ АДМИН ВА ТАВСИФҲО ====================
+# ==================== КОМАНДАҲОИ АДМИН ВА БЭКАПӢ ====================
 
 async def admin_only(update: Update) -> bool:
     return update.effective_user and update.effective_user.id in ADMIN_IDS
+
+async def cmd_exportdb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    db_path = get_persistence_path()
+    if os.path.exists(db_path):
+        with open(db_path, "rb") as f:
+            await update.message.reply_document(
+                document=InputFile(f, filename="bot_data.pkl"),
+                caption="💾 <b>Файли захиравии маълумотҳои бот (Бэкап).</b>\nИн файлро нигоҳ доред, то омор ҳеҷ гоҳ гум нашавад!",
+                parse_mode="HTML"
+            )
+    else:
+        await update.message.reply_text("❌ Файли маълумотҳо ҳало сохта нашудааст.")
+
+async def cmd_importdb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if update.message.document:
+        doc = update.message.document
+        if doc.file_name.endswith(".pkl"):
+            db_path = get_persistence_path()
+            file = await doc.get_file()
+            await file.download_to_drive(db_path)
+            await update.message.reply_text("✅ <b>Маълумотҳо бомуваффақият барқарор карда шуданд!</b>\nЛутфан командаи /start-ро занед.", parse_mode="HTML")
+        else:
+            await update.message.reply_text("⚠️ Лутфан танҳо файли bot_data.pkl-ро фиристед.")
 
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await admin_only(update): return
@@ -893,7 +926,8 @@ async def review_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 # ==================== MAIN ====================
 
 def main():
-    persistence = PicklePersistence(filepath="bot_data.pkl")
+    persistence_file = get_persistence_path()
+    persistence = PicklePersistence(filepath=persistence_file)
     application = Application.builder().token(BOT_TOKEN).persistence(persistence).build()
 
     order_conv = ConversationHandler(
@@ -912,10 +946,12 @@ def main():
         fallbacks=[],
     )
 
-    # Сабти командаҳои асосӣ ва админӣ
+    # Сабти командаҳои асосӣ, админӣ ва бэкап
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("menu", start))
     application.add_handler(CommandHandler("stats", cmd_stats))
+    application.add_handler(CommandHandler("exportdb", cmd_exportdb))
+    application.add_handler(MessageHandler(filters.Document.ALL & filters.User(user_id=ADMIN_IDS), cmd_importdb))
     application.add_handler(CommandHandler("broadcast", cmd_broadcast))
     application.add_handler(CommandHandler("booked", cmd_booked))
     application.add_handler(CommandHandler("freedate", cmd_freedate))
@@ -930,7 +966,7 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, review_text_handler))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    print("🤖 SIMO.MEDIA Master bot фаъол гашт...")
+    print(f"🤖 SIMO.MEDIA Master bot фаъол гашт... (Хотира: {persistence_file})")
     application.run_polling()
 
 if __name__ == "__main__":
