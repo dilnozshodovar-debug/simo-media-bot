@@ -1,25 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v12 Master)
-Ислоҳи садфоизаи шрифти тоҷикӣ дар PDF (System /tmp directory),
+SIMO.MEDIA — Telegram bot (нусхаи касбии v13 Master)
+Бехатарии 100% аз квадратҳои сиёҳ дар PDF,
 Календари интерактивӣ, Прогресс-бар, Командаҳои Админ ва Тавсифҳо.
-
-Барои иҷро:
-1) pip install -r requirements.txt
-2) Токени ботро гузоред
-3) python bot.py
 """
 
 import os
 import re
 import io
-import ssl
 import random
 import pickle
 import logging
-import tempfile
 import calendar
-import urllib.request
 from datetime import datetime, timezone, timedelta
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
@@ -33,7 +25,6 @@ from telegram.ext import (
     PicklePersistence,
     filters,
 )
-from telegram.constants import ChatAction
 
 # Модулҳо барои сохтани PDF
 from reportlab.lib.pagesizes import letter
@@ -47,67 +38,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ==================== ТАНЗИМИ САДФОИЗАИ ШРИФТИ ТОҶИКӢ БАРОИ PDF ====================
+# ==================== ТАНЗИМИ ШРИФТ ====================
 
 FONT_NAME = "Helvetica"
 
-def init_pdf_font():
+def get_pdf_font():
     global FONT_NAME
+    # Санҷиши мавҷудияти шрифти маҳаллӣ дар GitHub
+    possible_files = ["DejaVuSans.ttf", "TajikFont.ttf", "arial.ttf"]
+    for font_file in possible_files:
+        if os.path.exists(font_file) and os.path.getsize(font_file) > 10000:
+            try:
+                pdfmetrics.registerFont(TTFont("CustomTajikFont", font_file))
+                FONT_NAME = "CustomTajikFont"
+                return "CustomTajikFont", True
+            except Exception as e:
+                logger.error(f"Хато дар сабти {font_file}: {e}")
     
-    # Истифодаи папкаи муваққатии системавӣ (/tmp), ки дар Railway ҳамеша иҷозати сабт дорад
-    temp_dir = tempfile.gettempdir()
-    font_filename = os.path.join(temp_dir, "TajikFont.ttf")
-    
-    # 1. Агар шрифти маҳаллӣ дар GitHub бошад
-    if os.path.exists("DejaVuSans.ttf") and os.path.getsize("DejaVuSans.ttf") > 10000:
-        try:
-            pdfmetrics.registerFont(TTFont("TajikFont", "DejaVuSans.ttf"))
-            FONT_NAME = "TajikFont"
-            logger.info("Шрифти DejaVuSans аз репозитория сабт шуд.")
-            return "TajikFont"
-        except Exception as e:
-            logger.error(f"Хатогии сабти шрифти маҳаллӣ: {e}")
-
-    # 2. Агар аллакай ба /tmp боргирӣ шуда бошад
-    if os.path.exists(font_filename) and os.path.getsize(font_filename) > 10000:
-        try:
-            pdfmetrics.registerFont(TTFont("TajikFont", font_filename))
-            FONT_NAME = "TajikFont"
-            return "TajikFont"
-        except Exception as e:
-            logger.error(f"Хатогии сабти шрифти /tmp: {e}")
-
-    # 3. Боргирии мустақим ба /tmp
-    urls = [
-        "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf",
-        "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf",
-        "https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Regular.ttf"
-    ]
-    
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    
-    for url in urls:
-        try:
-            logger.info(f"Боргирии шрифт ба {font_filename} аз {url}...")
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
-                data = resp.read()
-                if len(data) > 10000:
-                    with open(font_filename, 'wb') as f:
-                        f.write(data)
-                    pdfmetrics.registerFont(TTFont("TajikFont", font_filename))
-                    FONT_NAME = "TajikFont"
-                    logger.info("Шрифти тоҷикӣ бомуваффақият сабт шуд!")
-                    return "TajikFont"
-        except Exception as e:
-            logger.error(f"Хатогӣ дар боргирии шрифт аз {url}: {e}")
-
-    return "Helvetica"
-
-# Гузоштани шрифт дар оғоз
-init_pdf_font()
+    FONT_NAME = "Helvetica"
+    return "Helvetica", False
 
 # ==================== ТАНЗИМОТИ АСОСӢ ====================
 
@@ -142,11 +91,6 @@ DEFAULT_REVIEWS = [
      "ru": "Съёмка с дрона по-настоящему оживила моменты. Рекомендую!"},
 ]
 
-WORK_START_HOUR = 9
-WORK_END_HOUR = 20
-DUSHANBE_TZ = timezone(timedelta(hours=5))
-REMINDER_HOURS = 24
-REFERRAL_DISCOUNT_PERCENT = 5
 DEPOSIT_AMOUNT = "100 сомонӣ"
 PAYMENT_LINK = "http://pay.expresspay.tj/?A=5058270376098736&s=100&c=&f1=133&FIELD2=&FIELD3="
 
@@ -414,44 +358,79 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
     ])
     return InlineKeyboardMarkup(kb)
 
-# ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF ====================
+# ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF (БЕ КВАДРАТҲОИ СИЁҲ) ====================
 
 def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_status):
-    font_to_use = init_pdf_font()
+    font_name, has_custom_font = get_pdf_font()
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     
-    p.setFont(font_to_use, 16)
-    p.drawString(140, 750, "ШАРТНОМАИ РАСМИИ SIMO.MEDIA")
-    p.setFont(font_to_use, 10)
-    p.drawString(180, 735, "Студияи наворбардорӣ ва таҳияи контент")
+    if has_custom_font:
+        # Агар файли DejaVuSans.ttf дар GitHub омода бошад — пурра бо тоҷикии кириллӣ
+        title = "ШАРТНОМАИ РАСМИИ SIMO.MEDIA"
+        subtitle = "Студияи наворбардорӣ ва таҳияи контент"
+        lbl_order = f"Рақами фармоиш: {order_num}"
+        lbl_created = f"Таърихи сабт: {datetime.now().strftime('%d.%m.%Y')}"
+        lbl_name = f"Ному насаби мизоҷ: {name}"
+        lbl_phone = f"Рақами телефон: {phone}"
+        lbl_date = f"Санаи тӯй: {date}"
+        lbl_pkg = f"Пакет: {pkg_name}"
+        lbl_price = f"Маблағи умумӣ: {price} сомонӣ"
+        lbl_prepay = f"Ҳолати пешпардохт: {prepay_status}"
+        lbl_terms = "Шартҳои шартнома:"
+        t1 = "1. Студия сифати баланди наворбардорӣ ва аксбардориро кафолат медиҳад."
+        t2 = "2. Мӯҳлати супоридани мавод аз пакети интихобшуда вобаста аст (7-30 рӯз)."
+        t3 = "3. SIMO.MEDIA барои нигоҳдории бехатарии маводҳои сабтшуда масъул аст."
+        lbl_exec = "Роҳбари студия: Шодовар Нуриддинов"
+        lbl_sign = "Имзои мизоҷ: ____________"
+    else:
+        # Агар шрифт набошад — бо матни озодаву фаҳмои лотинӣ (бидуни ҳеҷ як квадратча!)
+        title = "SIMO.MEDIA - SHARTNOMAI RASMI"
+        subtitle = "Studioi navorbardori va tahiyai content"
+        lbl_order = f"Raqami farmoish: {order_num}"
+        lbl_created = f"Ta'rikhi sabt: {datetime.now().strftime('%d.%m.%Y')}"
+        lbl_name = f"Nomu nasabi mizoj: {name}"
+        lbl_phone = f"Raqami telefon: {phone}"
+        lbl_date = f"Sanai tuy: {date}"
+        lbl_pkg = f"Paket: {pkg_name}"
+        lbl_price = f"Mablaghi umumii: {price} TJS"
+        lbl_prepay = f"Holati peshpardokht: {prepay_status}"
+        lbl_terms = "Sharthoi shartnoma:"
+        t1 = "1. Studio sifati balandi navorbardori va aksbardoriro kafolat medihad."
+        t2 = "2. Muxlati suporidani mavod az paketi intikhooshuda vobasta ast."
+        t3 = "3. SIMO.MEDIA baroi nigohdorii bekhatarii mavodho mas'ul ast."
+        lbl_exec = "Rohbari studio: Shodovar Nuriddinov"
+        lbl_sign = "Imzoi mizoj: ____________"
+
+    p.setFont(font_name, 16)
+    p.drawString(120, 750, title)
+    p.setFont(font_name, 10)
+    p.drawString(180, 735, subtitle)
     p.line(50, 720, 550, 720)
     
-    p.setFont(font_to_use, 11)
-    p.drawString(50, 680, f"Рақами фармоиш: {order_num}")
-    p.drawString(50, 660, f"Таърихи сабт: {datetime.now().strftime('%d.%m.%Y')}")
+    p.setFont(font_name, 11)
+    p.drawString(50, 680, lbl_order)
+    p.drawString(50, 660, lbl_created)
     
-    p.setFont(font_to_use, 10)
-    p.drawString(50, 620, f"Ному насаби мизоҷ: {name}")
-    p.drawString(50, 600, f"Рақами телефон: {phone}")
-    p.drawString(50, 580, f"Санаи тӯй: {date}")
-    p.drawString(50, 560, f"Пакет: {pkg_name}")
-    p.drawString(50, 540, f"Маблағи умумӣ: {price} сомонӣ")
-    
-    status_txt = "Пардохт шуд" if prepay_status in [True, "Paid", "Пардохт шуд"] else "Интизори пардохт"
-    p.drawString(50, 520, f"Ҳолати пешпардохт: {status_txt}")
+    p.setFont(font_name, 10)
+    p.drawString(50, 620, lbl_name)
+    p.drawString(50, 600, lbl_phone)
+    p.drawString(50, 580, lbl_date)
+    p.drawString(50, 560, lbl_pkg)
+    p.drawString(50, 540, lbl_price)
+    p.drawString(50, 520, lbl_prepay)
     
     p.line(50, 500, 550, 500)
-    p.setFont(font_to_use, 11)
-    p.drawString(50, 470, "Шартҳои шартнома:")
-    p.setFont(font_to_use, 9)
-    p.drawString(50, 450, "1. Студия сифати баланди наворбардорӣ ва аксбардориро кафолат медиҳад.")
-    p.drawString(50, 432, "2. Мӯҳлати супоридани мавод аз пакети интихобшуда вобаста аст (аз 7 то 30 рӯз).")
-    p.drawString(50, 414, "3. SIMO.MEDIA барои нигоҳдории бехатарии маводҳои сабтшуда масъул аст.")
+    p.setFont(font_name, 11)
+    p.drawString(50, 470, lbl_terms)
+    p.setFont(font_name, 9)
+    p.drawString(50, 450, t1)
+    p.drawString(50, 432, t2)
+    p.drawString(50, 414, t3)
     
-    p.setFont(font_to_use, 10)
-    p.drawString(50, 340, "Роҳбари студия: Шодовар Нуриддинов")
-    p.drawString(350, 340, "Имзои мизоҷ: ____________")
+    p.setFont(font_name, 10)
+    p.drawString(50, 340, lbl_exec)
+    p.drawString(350, 340, lbl_sign)
     
     p.showPage()
     p.save()
