@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v7 Master)
-Ду забон, FSM, Календари интерактивӣ, Прогресс-бари фармоиш, PDF Шартнома,
-Системаи Промокодҳо, Ҷамъоварии худкори тавсифҳо ва хизматрасониҳои иловагӣ.
+SIMO.MEDIA — Telegram bot (нусхаи касбии v8 Master)
+Ду забон, FSM, Календари интерактивӣ, Прогресс-бари фармоиш,
+PDF Шартнома ва Чек бо забони тоҷикӣ (DejaVuSans font),
+Системаи Промокодҳо, Ҷамъоварии худкори тавсифҳо ва Хизматрасониҳо.
 
 Барои иҷро:
 1) pip install -r requirements.txt
-2) Токени ботро дар ENV ё дар поён гузоред
+2) Токени ботро гузоред
 3) python bot.py
 """
 
@@ -17,6 +18,7 @@ import random
 import pickle
 import logging
 import calendar
+import urllib.request
 from datetime import datetime, timezone, timedelta
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
@@ -33,9 +35,11 @@ from telegram.ext import (
 )
 from telegram.constants import ChatAction
 
-# Модул барои сохтани PDF
+# Модулҳо барои сохтани PDF
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -43,7 +47,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ==================== ТАНЗИМОТ ====================
+# ==================== ТАНЗИМИ ШРИФТ БАРОИ PDF ====================
+
+FONT_NAME = "Helvetica"
+FONT_PATH = "DejaVuSans.ttf"
+
+def setup_pdf_font():
+    global FONT_NAME
+    if not os.path.exists(FONT_PATH):
+        try:
+            url = "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf"
+            urllib.request.urlretrieve(url, FONT_PATH)
+        except Exception as e:
+            logger.error(f"Шрифт боргирӣ нашуд: {e}")
+            
+    if os.path.exists(FONT_PATH):
+        try:
+            pdfmetrics.registerFont(TTFont("DejaVu", FONT_PATH))
+            FONT_NAME = "DejaVu"
+            logger.info("Шрифти DejaVuSans барои PDF сабт шуд.")
+        except Exception as e:
+            logger.error(f"Хатогии сабти шрифт: {e}")
+
+setup_pdf_font()
+
+# ==================== ТАНЗИМОТИ АСОСӢ ====================
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8864413053:AAFSNnOT6SgRsp3zD16fEMR_BsqBhiloim4")
 ADMIN_IDS = [8336737421]
@@ -97,7 +125,7 @@ EXTRA_SERVICES_TEXTS = {
     "video_editing": "🎬 <b>Монтажи видео</b>\n━━━━━━━━━━━━━━━━━━\n\nВидеоҳои худро ба сатҳи нав бардоред!\nМо ҳама гуна видеоҳоро (Reels, TikTok, YouTube, Тӯйҳо) бо услуби касбӣ монтаж мекунем.",
 }
 
-# ==================== МАТНҲО ====================
+# ==================== МАТНҲО ВА ПАКЕТҲОИ ПУРРА ====================
 
 BTN = {
     "tj": {
@@ -132,32 +160,85 @@ TEXT = {
                "━━━━━━━━━━━━━━━━━━\n\n🤍 Хуш омадед!\n\n"
                "Рӯзи арӯсӣ яке аз муҳимтарин ва фаромӯшнашавандатарин рӯзҳои зиндагист. Мо ҳар табассум, "
                "ҳар ашки шодӣ ва ҳар лаҳзаи пур аз эҳсосоти ин рӯзи махсусро бо сифати баланд ва услуби "
-               "касбӣ сабт намуда, онҳоро ба филме табдил медиҳем.\n\n"
-               "👇 Лутфан аз менюи поён яке аз бахшҳоро интихоб намоед:"),
+               "касбӣ сабт намуда, онҳоро ба филме табдил медиҳем, ки солҳои дароз хотираҳои ширини "
+               "шуморо зинда нигоҳ медорад.\n\n"
+               "🎬 <b>Аз имкониятҳои боти мо истифода баред!</b>\nДар ин ҷо шумо метавонед:\n"
+               "📂 Намунаҳои корҳои моро тамошо кунед;\n💰 Бо нархнома шинос шавед;\n"
+               "📅 Барои санаи худ дастрасиро санҷед;\n📝 Фармоиш диҳед ё бо мо дар тамос шавед.\n\n"
+               "👇 Лутфан аз менюи поён яке аз бахшҳоро интихоб намоед. Мо ҳамеша омодаем, ки беҳтарин "
+               "лаҳзаҳои шуморо ҷовидона гардонем! 🤍"),
         "ru": ("🎥 <b>SIMO.MEDIA</b>\n<i>✨ Превращаем воспоминания в вечные фильмы ✨</i>\n"
                "━━━━━━━━━━━━━━━━━━\n\n🤍 Добро пожаловать!\n\n"
-               "Свадебный день — один из важнейших дней в жизни. Мы снимаем каждый момент в высоком качестве.\n\n"
-               "👇 Пожалуйста, выберите раздел из меню ниже:"),
+               "Свадебный день — один из важнейших и незабываемых дней в жизни. Мы снимаем каждую улыбку, "
+               "каждую слезу радости и каждый эмоциональный момент этого особенного дня в высоком качестве "
+               "и с профессиональным стилем, превращая их в фильм, который долгие годы будет хранить ваши "
+               "тёплые воспоминания.\n\n"
+               "🎬 <b>Воспользуйтесь возможностями нашего бота!</b>\nЗдесь вы можете:\n"
+               "📂 Посмотреть примеры наших работ;\n💰 Ознакомиться с прайс-листом;\n"
+               "📅 Проверить доступность на вашу дату;\n📝 Оформить заказ или связаться с нами.\n\n"
+               "👇 Пожалуйста, выберите один из разделов в меню ниже. Мы всегда готовы сделать ваши "
+               "лучшие моменты вечными! 🤍"),
     },
     "stats": {
-        "tj": "📊 <b>SIMO.MEDIA ДАР РАҚАМҲО</b>\n━━━━━━━━━━━━━━━━━━\n\n💍 <b>500+</b> тӯйи сабтшуда\n📅 <b>3+</b> сол таҷриба\n⭐ <b>4.9/5</b> баҳои муштариён\n🎬 <b>100%</b> фармоишҳои саривақт супоридашуда",
-        "ru": "📊 <b>SIMO.MEDIA В ЦИФРАХ</b>\n━━━━━━━━━━━━━━━━━━\n\n💍 <b>500+</b> отснятых свадеб\n📅 <b>3+</b> года опыта\n⭐ <b>4.9/5</b> оценка клиентов\n🎬 <b>100%</b> заказов сдано вовремя",
+        "tj": ("📊 <b>SIMO.MEDIA ДАР РАҚАМҲО</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "💍 <b>500+</b> тӯйи сабтшуда\n📅 <b>3+</b> сол таҷриба\n"
+               "⭐ <b>4.9/5</b> баҳои муштариён\n🎬 <b>100%</b> фармоишҳои саривақт супоридашуда"),
+        "ru": ("📊 <b>SIMO.MEDIA В ЦИФРАХ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "💍 <b>500+</b> отснятых свадеб\n📅 <b>3+</b> года опыта\n"
+               "⭐ <b>4.9/5</b> оценка клиентов\n🎬 <b>100%</b> заказов сдано вовремя"),
     },
     "about": {
-        "tj": "ℹ️ <b>Дар бораи SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\nSIMO.MEDIA — студияи касбии наворбардории тӯй таҳти роҳбарии <b>Шодовар Нуриддинов</b> мебошад.\n📅 Аз 20 феврали соли 2023 фаъолият мекунад.",
-        "ru": "ℹ️ <b>О SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\nSIMO.MEDIA — профессиональная студия свадебной видеосъёмки под руководством <b>Шодовара Нуриддинова</b>.",
+        "tj": ("ℹ️ <b>Дар бораи SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "SIMO.MEDIA — студияи касбии наворбардории тӯй таҳти роҳбарии "
+               "<b>Шодовар Нуриддинов</b> мебошад.\n\n"
+               "📅 Студияи мо аз 20 феврали соли 2023 фаъолияти расмии худро оғоз намуд.\n\n"
+               "🎥 Мо аз камераҳои касбӣ, DJI Ronin, дронҳои муосир ва сабти садои касбӣ истифода мебарем.\n\n"
+               "💻 Коркарди видео бо <b>Adobe Premiere Pro, After Effects</b> ва <b>DaVinci Resolve</b> "
+               "анҷом дода мешавад, бо кӯмаки AI барои сифати беҳтари ранг.\n\n"
+               "<b>SIMO.MEDIA — хотираҳоро ба филмҳои ҷовидона табдил медиҳем.</b> 💍"),
+        "ru": ("ℹ️ <b>О SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "SIMO.MEDIA — профессиональная студия свадебной видеосъёмки под руководством "
+               "<b>Шодовара Нуриддинова</b>.\n\n"
+               "📅 Студия официально работает с 20 февраля 2023 года.\n\n"
+               "🎥 Мы используем профессиональные камеры, DJI Ronin, современные дроны и "
+               "профессиональный звук.\n\n"
+               "💻 Монтаж выполняется в <b>Adobe Premiere Pro, After Effects</b> и <b>DaVinci Resolve</b>, "
+               "с использованием AI для улучшения цвета.\n\n"
+               "<b>SIMO.MEDIA — превращаем воспоминания в вечные фильмы.</b> 💍"),
     },
     "why": {
-        "tj": "✨ <b>ЧАРО МАҲЗ SIMO.MEDIA?</b>\n━━━━━━━━━━━━━━━━━━\n\n📸 Таҷҳизоти муосир ва сифати баланд\n🎬 Монтажи касбӣ\n🚁 Наворбардорӣ бо дрон\n⚡ Омодасозии зуд",
-        "ru": "✨ <b>ПОЧЕМУ ИМЕННО SIMO.MEDIA?</b>\n━━━━━━━━━━━━━━━━━━\n\n📸 Современное оборудование\n🎬 Профессиональный монтаж\n🚁 Съёмка с дрона",
+        "tj": ("✨ <b>ЧАРО МАҲЗ SIMO.MEDIA?</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "📸 Таҷҳизоти муосир ва сифати баланд\n🎬 Монтажи касбӣ бо услуби замонавӣ\n"
+               "🚁 Наворбардорӣ бо дрон\n💍 Сабти тамоми лаҳзаҳои муҳими тӯй\n"
+               "⚡ Омодасозии зуд ва саривақтӣ\n🤖 Истифодаи AI барои сифати беҳтари ранг\n"
+               "🤝 Муносибати масъулиятнок"),
+        "ru": ("✨ <b>ПОЧЕМУ ИМЕННО SIMO.MEDIA?</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "📸 Современное оборудование и высокое качество\n🎬 Профессиональный монтаж\n"
+               "🚁 Съёмка с дрона\n💍 Съёмка всех важных моментов свадьбы\n"
+               "⚡ Быстрая и своевременная подготовка\n🤖 Использование AI для улучшения цвета\n"
+               "🤝 Ответственный подход"),
     },
     "faq": {
-        "tj": "❓ <b>САВОЛҲОИ МАЪМУЛ</b>\n━━━━━━━━━━━━━━━━━━\n\n🔹 <b>Оё пеш аз тӯй вохӯрӣ мешавад?</b>\nҲа.\n\n🔹 <b>Пеш-пардохт лозим аст?</b>\nҲа, барои мустаҳкам кардани фармоиш.",
-        "ru": "❓ <b>ЧАСТЫЕ ВОПРОСЫ</b>\n━━━━━━━━━━━━━━━━━━\n\n🔹 <b>Есть ли встреча перед свадьбой?</b>\nДа.\n\n🔹 <b>Нужна ли предоплата?</b>\nДа.",
+        "tj": ("❓ <b>САВОЛҲОИ МАЪМУЛ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "🔹 <b>Оё пеш аз тӯй вохӯрӣ мешавад?</b>\nҲа, тамоми ҷузъиётро пеш муҳокима мекунем.\n\n"
+               "🔹 <b>Пеш-пардохт лозим аст?</b>\nҲа, барои мустаҳкам кардани фармоиш.\n\n"
+               "🔹 <b>Оё берун аз шаҳр меравед?</b>\nҲа, бо шартҳои иловагӣ.\n\n"
+               "🔹 <b>То кай мавод омода мешавад?</b>\nАз 7 то 30 рӯз, вобаста ба пакет."),
+        "ru": ("❓ <b>ЧАСТЫЕ ВОПРОСЫ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               "🔹 <b>Есть ли встреча перед свадьбой?</b>\nДа, мы обсуждаем все детали заранее.\n\n"
+               "🔹 <b>Нужна ли предоплата?</b>\nДа, для подтверждения заказа.\n\n"
+               "🔹 <b>Выезжаете за город?</b>\nДа, при дополнительных условиях.\n\n"
+               "🔹 <b>Когда будет готов материал?</b>\nОт 7 до 30 дней, в зависимости от пакета."),
     },
     "contact": {
-        "tj": f"📞 <b>Барои машварат ва фармоиш</b>\n━━━━━━━━━━━━━━━━━━\n\n☎️ Телефон: {CONTACT_PHONE_DISPLAY}\n💬 WhatsApp: {CONTACT_PHONE_DISPLAY}\n✈️ Telegram: {TELEGRAM_USERNAME}",
-        "ru": f"📞 <b>Для консультации и заказа</b>\n━━━━━━━━━━━━━━━━━━\n\n☎️ Телефон: {CONTACT_PHONE_DISPLAY}\n💬 WhatsApp: {CONTACT_PHONE_DISPLAY}\n✈️ Telegram: {TELEGRAM_USERNAME}",
+        "tj": ("📞 <b>Барои машварат ва фармоиш</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               f"☎️ Телефон: {CONTACT_PHONE_DISPLAY}\n💬 WhatsApp: {CONTACT_PHONE_DISPLAY}\n"
+               f"✈️ Telegram: {TELEGRAM_USERNAME}\n📷 Instagram: намуна дар боло\n\n"
+               "SIMO.MEDIA — Хотираҳоро ба вақт насупоред 🤍"),
+        "ru": ("📞 <b>Для консультации и заказа</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+               f"☎️ Телефон: {CONTACT_PHONE_DISPLAY}\n💬 WhatsApp: {CONTACT_PHONE_DISPLAY}\n"
+               f"✈️ Telegram: {TELEGRAM_USERNAME}\n📷 Instagram: см. выше\n\n"
+               "SIMO.MEDIA — Не откладывайте воспоминания 🤍"),
     },
     "prices_title": {"tj": "💰 <b>ПРАЙС-ЛИСТИ SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\nЛутфан пакетро интихоб кунед 👇", "ru": "💰 <b>ПРАЙС-ЛИСТ SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\nВыберите пакет 👇"},
     "portfolio_title": {"tj": "🎬 <b>ПОРТФОЛИО</b>\n━━━━━━━━━━━━━━━━━━\n\nНамунаи корҳои мо дар поён 👇", "ru": "🎬 <b>ПОРТФОЛИО</b>\n━━━━━━━━━━━━━━━━━━\n\nНекоторые наши работы ниже 👇"},
@@ -166,10 +247,10 @@ TEXT = {
     "ask_phone": {"tj": "📱 <b>Қадами 2/4</b> — Лутфан рақами телефони худро нависед (масалан 93 882 97 96):", "ru": "📱 <b>Шаг 2/4</b> — Напишите ваш номер телефона:"},
     "phone_invalid": {"tj": "⚠️ Рақами телефон нодуруст аст. Лутфан танҳо рақамҳо нависед:", "ru": "⚠️ Неверный номер телефона:"},
     "ask_date_cal": {"tj": "📅 <b>Қадами 3/4</b> — Лутфан <b>санаи тӯйро аз календари зерин интихоб кунед</b>:\n\n🟢 — Санаи озод\n🔴 — Санаи банд", "ru": "📅 <b>Шаг 3/4</b> — Выберите <b>дату свадьбы из календаря</b>:\n\n🟢 — Свободно\n🔴 — Занято"},
-    "ask_payment": {"tj": f"💳 <b>Қадами 4/4</b> — Оё ҳоло мехоҳед пешпардохт кунед?\n\nПешпардохт: {DEPOSIT_AMOUNT}", "ru": f"💳 <b>Шаг 4/4</b> — Хотите внести предоплату сейчас?\n\nПредоплата: {DEPOSIT_AMOUNT}"},
+    "ask_payment": {"tj": f"💳 <b>Қадами 4/4</b> — Оё ҳоло мехоҳед пешпардохт кунед?\n\nБарои мустаҳкам кардани ҷои шумо дар санаи интихобшуда, тавсия медиҳем {DEPOSIT_AMOUNT} пешпардохт кунед ва чекро фиристед.", "ru": f"💳 <b>Шаг 4/4</b> — Хотите внести предоплату сейчас?\n\nПредоплата: {DEPOSIT_AMOUNT}"},
     "pay_now_btn": {"tj": "✅ Ҳоло мехоҳам пардохт кунам", "ru": "✅ Хочу оплатить сейчас"},
     "pay_later_btn": {"tj": "⏳ Дертар пардохт мекунам", "ru": "⏳ Оплачу позже"},
-    "payment_link_text": {"tj": f"💳 <b>Пешпардохти {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n🔗 {PAYMENT_LINK}\n\nБаъди пардохт чекро фиристед 👇", "ru": f"💳 <b>Предоплата {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n🔗 {PAYMENT_LINK}\n\nОтправьте чек после оплаты 👇"},
+    "payment_link_text": {"tj": f"💳 <b>Пешпардохти {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n🔗 {PAYMENT_LINK}\n\nБаъди пардохт чекро (скриншот) фиристед 👇", "ru": f"💳 <b>Предоплата {DEPOSIT_AMOUNT}</b>\n━━━━━━━━━━━━━━━━━━\n\n🔗 {PAYMENT_LINK}\n\nОтправьте чек после оплаты 👇"},
     "pay_continue_btn": {"tj": "✅ Ман пардохт кардам", "ru": "✅ Я оплатил(а)"},
     "ask_receipt": {"tj": "📸 <b>Чеки пардохт</b>\n━━━━━━━━━━━━━━━━━━\n\nЛутфан расми чекро фиристед.", "ru": "📸 <b>Чек оплаты</b>\n━━━━━━━━━━━━━━━━━━\n\nОтправьте фото чека."},
     "receipt_invalid": {"tj": "⚠️ Лутфан расми чекро фиристед.", "ru": "⚠️ Отправьте фото чека."},
@@ -194,9 +275,56 @@ TEXT = {
 }
 
 PACKAGES = {
-    "standard": {"short": "STANDARD (1500 сомонӣ)", "price": 1500, "text": {"tj": "🎥 <b>STANDARD — 1500 сомонӣ</b>\n\n✔️ 1 Камера\n✔️ DVD-диск\n🎁 10 Акси чопшуда", "ru": "🎥 <b>STANDARD — 1500 сомони</b>\n\n✔️ 1 Камера\n✔️ DVD-диск\n🎁 10 Печатных фото"}},
-    "vip": {"short": "VIP (2000 сомонӣ)", "price": 2000, "text": {"tj": "👑 <b>VIP — 2000 сомонӣ</b>\n\n✔️ 1 Камера\n✔️ Флешка (64GB)\n✔️ Албом Wedding Day\n🎁 30 Акси чопшуда", "ru": "👑 <b>VIP — 2000 сомони</b>\n\n✔️ 1 Камера\n✔️ Флешка (64GB)\n✔️ Альбом Wedding Day\n🎁 30 Печатных фото"}},
-    "vip_premium": {"short": "VIP PREMIUM (3000 сомонӣ)", "price": 3000, "text": {"tj": "💎 <b>VIP PREMIUM — 3000 сомонӣ</b>\n\n✔️ Крани наворбардорӣ\n✔️ Клип + Love Story\n✔️ Флешка (64GB)\n✔️ Албом\n🎁 50 Акси чопшуда", "ru": "💎 <b>VIP PREMIUM — 3000 сомони</b>\n\n✔️ Операторский кран\n✔️ Клип + Love Story\n✔️ Флешка (64GB)\n✔️ Альбом\n🎁 50 Печатных фото"}},
+    "standard": {
+        "short": "STANDARD (1500 сомонӣ)",
+        "price": 1500,
+        "text": {
+            "tj": ("🎥 <b>STANDARD — 1500 сомонӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                   "Интихоби беҳтарин барои сабти лаҳзаҳои муҳими тӯй.\n\n"
+                   "✔️ Наворбардории касбӣ\n✔️ Аксбардории касбӣ\n✔️ 1 адад камера\n"
+                   "✔️ 1 ҷуфт диски аслӣ (Original DVD)\n\n🎁 Тӯҳфа: 10 дона акси чопшуда\n"
+                   "⏳ Омодасозии мавод: 25–30 рӯз"),
+            "ru": ("🎥 <b>STANDARD — 1500 сомони</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                   "Лучший выбор для съёмки важных моментов свадьбы.\n\n"
+                   "✔️ Профессиональная видеосъёмка\n✔️ Профессиональная фотосъёмка\n✔️ 1 камера\n"
+                   "✔️ 1 оригинальный DVD-диск\n\n🎁 Подарок: 10 печатных фото\n"
+                   "⏳ Готовность материала: 25–30 дней"),
+        },
+    },
+    "vip": {
+        "short": "VIP (2000 сомонӣ)",
+        "price": 2000,
+        "text": {
+            "tj": ("👑 <b>VIP — 2000 сомонӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                   "Сифати бештар, хотираҳои бештар.\n\n"
+                   "✔️ Наворбардории касбӣ\n✔️ Аксбардории касбӣ\n✔️ 1 адад камера\n"
+                   "✔️ 1 ҷуфт диски аслӣ\n✔️ Флешкаи аслӣ (64 GB)\n✔️ 1 адад албоми Wedding Day\n\n"
+                   "🎁 Тӯҳфа: 30 дона акси чопшуда\n⏳ Омодасозии мавод: 15–20 рӯз"),
+            "ru": ("👑 <b>VIP — 2000 сомони</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                   "Больше качества, больше воспоминаний.\n\n"
+                   "✔️ Профессиональная видеосъёмка\n✔️ Профессиональная фотосъёмка\n✔️ 1 камера\n"
+                   "✔️ 1 оригинальный DVD-диск\n✔️ Оригинальная флешка (64 GB)\n✔️ Альбом Wedding Day\n\n"
+                   "🎁 Подарок: 30 печатных фото\n⏳ Готовность материала: 15–20 дней"),
+        },
+    },
+    "vip_premium": {
+        "short": "VIP PREMIUM (3000 сомонӣ)",
+        "price": 3000,
+        "text": {
+            "tj": ("💎 <b>VIP PREMIUM — 3000 сомонӣ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                   "Интихоби беҳтарин барои онҳое, ки беҳтаринро мехоҳанд.\n\n"
+                   "✔️ Наворбардории касбӣ\n✔️ Аксбардории касбӣ\n✔️ 1 адад камера\n"
+                   "✔️ 1 адад крани наворбардорӣ\n✔️ Клипи тӯёна\n✔️ Love Story\n"
+                   "✔️ 2 ҷуфт диски аслӣ\n✔️ Флешкаи аслӣ (64 GB)\n✔️ Албоми Wedding Day\n"
+                   "✔️ Албом барои аксҳо\n\n🎁 Тӯҳфа: 50 дона акси чопшуда\n⏳ Омодасозии мавод: 7–10 рӯз"),
+            "ru": ("💎 <b>VIP PREMIUM — 3000 сомони</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                   "Лучший выбор для тех, кто хочет самое лучшее.\n\n"
+                   "✔️ Профессиональная видеосъёмка\n✔️ Профессиональная фотосъёмка\n✔️ 1 камера\n"
+                   "✔️ Операторский кран\n✔️ Свадебный клип\n✔️ Love Story\n"
+                   "✔️ 2 оригинальных DVD-диска\n✔️ Оригинальная флешка (64 GB)\n✔️ Альбом Wedding Day\n"
+                   "✔️ Фотоальбом\n\n🎁 Подарок: 50 печатных фото\n⏳ Готовность материала: 7–10 дней"),
+        },
+    },
 }
 
 ASK_NAME, ASK_PHONE, ASK_DATE, PAYMENT_CHOICE, ASK_RECEIPT, CONFIRM, ASK_PROMO = range(7)
@@ -217,12 +345,10 @@ def validate_phone(text: str) -> bool:
 
 def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
     kb = []
-    month_names = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+    month_names = ["Январ", "Феврал", "Март", "Апрел", "Май", "Июн", "Июл", "Август", "Сентябр", "Октябр", "Ноябр", "Декабр"]
     
-    # Шапка бо моҳ ва сол
     kb.append([InlineKeyboardButton(f"📅 {month_names[month-1]} {year}", callback_data="cal_ignore")])
     
-    # Рӯзҳои ҳафта
     week_days = ["Дш", "Сш", "Чш", "Пш", "Ҷм", "Шб", "Як"]
     kb.append([InlineKeyboardButton(day, callback_data="cal_ignore") for day in week_days])
     
@@ -239,7 +365,6 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
                 row.append(InlineKeyboardButton(f"{icon}{day}", callback_data=f"cal_date_{date_str}"))
         kb.append(row)
         
-    # Навигатсияи моҳҳо
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
     next_month = month + 1 if month < 12 else 1
@@ -257,34 +382,37 @@ def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_st
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     
-    p.setFont("Helvetica-Bold", 18)
-    p.drawString(180, 750, "SIMO.MEDIA — OFFICIAL CONTRACT")
-    p.setFont("Helvetica", 10)
-    p.drawString(200, 735, "Videography & Content Creation Studio")
+    p.setFont(FONT_NAME, 16)
+    p.drawString(140, 750, "ШАРТНОМАИ РАСМИИ SIMO.MEDIA")
+    p.setFont(FONT_NAME, 10)
+    p.drawString(180, 735, "Студияи наворбардорӣ ва таҳияи контент")
     p.line(50, 720, 550, 720)
     
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, 680, f"Order Number: {order_num}")
-    p.drawString(50, 660, f"Date Created: {datetime.now().strftime('%d.%m.%Y')}")
+    p.setFont(FONT_NAME, 11)
+    p.drawString(50, 680, f"Рақами фармоиш: {order_num}")
+    p.drawString(50, 660, f"Таърихи сабт: {datetime.now().strftime('%d.%m.%Y')}")
     
-    p.setFont("Helvetica", 11)
-    p.drawString(50, 620, f"Client Name: {name}")
-    p.drawString(50, 600, f"Phone Number: {phone}")
-    p.drawString(50, 580, f"Wedding Date: {date}")
-    p.drawString(50, 560, f"Selected Package: {pkg_name}")
-    p.drawString(50, 540, f"Total Price: {price} TJS")
-    p.drawString(50, 520, f"Prepayment Status: {prepay_status}")
+    p.setFont(FONT_NAME, 10)
+    p.drawString(50, 620, f"Ному насаби мизоҷ: {name}")
+    p.drawString(50, 600, f"Рақами телефон: {phone}")
+    p.drawString(50, 580, f"Санаи тӯй: {date}")
+    p.drawString(50, 560, f"Пакет: {pkg_name}")
+    p.drawString(50, 540, f"Маблағи умумӣ: {price} сомонӣ")
+    
+    status_txt = "Пардохт шуд" if prepay_status in [True, "Paid", "Пардохт шуд"] else "Интизори пардохт"
+    p.drawString(50, 520, f"Ҳолати пешпардохт: {status_txt}")
     
     p.line(50, 500, 550, 500)
-    p.drawString(50, 470, "Terms & Conditions:")
-    p.setFont("Helvetica-Oblique", 9)
-    p.drawString(50, 450, "1. The studio guarantees high-quality video and photo coverage.")
-    p.drawString(50, 435, "2. Material delivery time depends on the selected package (7 to 30 days).")
-    p.drawString(50, 420, "3. SIMO.MEDIA is responsible for preserving all recorded footage.")
+    p.setFont(FONT_NAME, 11)
+    p.drawString(50, 470, "Шартҳои шартнома:")
+    p.setFont(FONT_NAME, 9)
+    p.drawString(50, 450, "1. Студия сифати баланди наворбардорӣ ва аксбардориро кафолат медиҳад.")
+    p.drawString(50, 432, "2. Мӯҳлати супоридани мавод аз пакети интихобшуда вобаста аст (аз 7 то 30 рӯз).")
+    p.drawString(50, 414, "3. SIMO.MEDIA барои нигоҳдории бехатарии маводҳои сабтшуда масъул аст.")
     
-    p.setFont("Helvetica-Bold", 11)
-    p.drawString(50, 350, "Studio Executive: Shodovar Nuriddinov")
-    p.drawString(350, 350, "Client Signature: ____________")
+    p.setFont(FONT_NAME, 10)
+    p.drawString(50, 340, "Роҳбари студия: Шодовар Нуриддинов")
+    p.drawString(350, 340, "Имзои мизоҷ: ____________")
     
     p.showPage()
     p.save()
@@ -502,7 +630,6 @@ async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ASK_PHONE
     context.user_data["order_phone"] = update.message.text
     
-    # Нишон додани Календар барои интихоби сана
     now = datetime.now()
     booked = context.bot_data.get("booked_dates", {})
     kb = generate_calendar_keyboard(now.year, now.month, booked)
@@ -587,10 +714,9 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
     discount = context.user_data.get("discount", 0)
     final_price = price - (price * discount / 100)
 
-    # Сохтани файли PDF Шартнома
-    pdf_buffer = create_contract_pdf(order_number, name, phone, date, pkg.get("short", ""), final_price, "Paid" if prepay else "Pending")
+    # Сохтани файли PDF Шартнома бо забони тоҷикӣ ва шрифти дақиқ
+    pdf_buffer = create_contract_pdf(order_number, name, phone, date, pkg.get("short", ""), final_price, "Пардохт шуд" if prepay else "Интизори пардохт")
 
-    # Ба сабти фармоишҳо илова кардан
     context.bot_data.setdefault("booked_dates", {})[date] = order_number
     context.bot_data.setdefault("orders", {})[order_number] = {
         "chat_id": message_obj.chat.id, "pkg_short": pkg.get("short"),
@@ -598,7 +724,6 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
         "p1": 100, "p2": 0, "p3": 0, "p4": 0
     }
 
-    # Фиристодани PDF ба мизоҷ
     await message_obj.reply_document(
         document=InputFile(pdf_buffer, filename=f"Contract_{order_number}.pdf"),
         caption=f"{t('order_accepted', lang)}\n\n{t('order_thanks', lang)}",
@@ -606,7 +731,6 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=back_to_main_kb(lang)
     )
 
-    # Огоҳӣ ба Админ
     for admin_id in ADMIN_IDS:
         try:
             pdf_buffer.seek(0)
@@ -621,7 +745,7 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
 
     return ConversationHandler.END
 
-# ==================== КОМАНДАҲОИ АДМИН ====================
+# ==================== КОМАНДАҲОИ АДМИН ВА ТАВСИФҲО ====================
 
 async def cmd_addpromo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_IDS: return
