@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v9 Master)
+SIMO.MEDIA — Telegram bot (нусхаи касбии v10 Final Master)
 Ду забон, FSM, Календари интерактивӣ, Прогресс-бари фармоиш,
-PDF Шартнома ва Чек бо забони тоҷикӣ (DejaVuSans font - SSL/CDN Fixed),
+PDF Шартнома ва Чек бо забони тоҷикӣ (DejaVuSans), Командаҳои пурраи Админ,
 Системаи Промокодҳо, Ҷамъоварии худкори тавсифҳо ва Хизматрасониҳо.
 
 Барои иҷро:
@@ -391,7 +391,7 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
     ])
     return InlineKeyboardMarkup(kb)
 
-# ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF (Шартнома ва Чек) ====================
+# ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF ====================
 
 def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_status):
     font_name = ensure_font_loaded()
@@ -730,7 +730,6 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
     discount = context.user_data.get("discount", 0)
     final_price = price - (price * discount / 100)
 
-    # Сохтани файли PDF бо шрифти боэътимод
     pdf_buffer = create_contract_pdf(order_number, name, phone, date, pkg.get("short", ""), final_price, "Пардохт шуд" if prepay else "Интизори пардохт")
 
     context.bot_data.setdefault("booked_dates", {})[date] = order_number
@@ -763,8 +762,81 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
 
 # ==================== КОМАНДАҲОИ АДМИН ВА ТАВСИФҲО ====================
 
+async def admin_only(update: Update) -> bool:
+    return update.effective_user and update.effective_user.id in ADMIN_IDS
+
+async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    all_users = context.bot_data.get("all_users", {})
+    orders = context.bot_data.get("orders", {})
+    booked = context.bot_data.get("booked_dates", {})
+
+    lines = [
+        "📊 <b>ОМОРИ ПУРРАИ БОТ (SIMO.MEDIA)</b>",
+        "━━━━━━━━━━━━━━━━━━",
+        f"👥 Ҳамагӣ корбарони бот: <b>{len(all_users)}</b>",
+        f"🔖 Ҳамагӣ фармоишҳо: <b>{len(orders)}</b>",
+        f"📅 Санаҳои бандшуда: <b>{len(booked)}</b>",
+    ]
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
+
+async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if not context.args:
+        await update.message.reply_text("Истифода: /broadcast Матни паём")
+        return
+    text = " ".join(context.args)
+    all_users = context.bot_data.get("all_users", {})
+    sent, failed = 0, 0
+    
+    broadcast_caption = f"📢 <b>ХАБАРИ МУҲИМ АЗ SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\n{text}"
+    
+    for chat_id in list(all_users.keys()):
+        try:
+            await context.bot.send_message(chat_id=chat_id, text=broadcast_caption, parse_mode="HTML")
+            sent += 1
+        except Exception:
+            failed += 1
+    await update.message.reply_text(f"✅ Паём ба {sent} корбар фиристода шуд. Хатогӣ: {failed}.")
+
+async def cmd_booked(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    booked = context.bot_data.get("booked_dates", {})
+    if not booked:
+        await update.message.reply_text("Ягон сана банд нест.")
+        return
+    lines = [f"📅 {date} — {order}" for date, order in sorted(booked.items())]
+    await update.message.reply_text("📋 <b>Санаҳои банд:</b>\n\n" + "\n".join(lines), parse_mode="HTML")
+
+async def cmd_freedate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if not context.args:
+        await update.message.reply_text("Истифода: /freedate 15.08.2026")
+        return
+    date_str = context.args[0]
+    booked = context.bot_data.get("booked_dates", {})
+    if date_str in booked:
+        del booked[date_str]
+        await update.message.reply_text(f"✅ Санаи {date_str} озод карда шуд.")
+    else:
+        await update.message.reply_text(f"Санаи {date_str} дар рӯйхати банд нест.")
+
+async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await admin_only(update): return
+    if len(context.args) < 2:
+        await update.message.reply_text("Истифода: /status SM-1234 Тасдиқшуда")
+        return
+    order_num = context.args[0].upper()
+    new_status = " ".join(context.args[1:])
+    orders = context.bot_data.get("orders", {})
+    if order_num in orders:
+        orders[order_num]["status"] = new_status
+        await update.message.reply_text(f"✅ Ҳолати {order_num} иваз шуд ба: {new_status}")
+    else:
+        await update.message.reply_text("❌ Фармоиш ёфт нашуд.")
+
 async def cmd_addpromo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS: return
+    if not await admin_only(update): return
     if len(context.args) < 2:
         await update.message.reply_text("Истифода: /addpromo SIMO2026 15")
         return
@@ -773,7 +845,7 @@ async def cmd_addpromo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Промокоди {code} бо чегирмаи {percent}% фаъол шуд.")
 
 async def cmd_setprogress(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS: return
+    if not await admin_only(update): return
     if len(context.args) < 5:
         await update.message.reply_text("Истифода: /setprogress SM-1234 100 100 50 0")
         return
@@ -787,7 +859,7 @@ async def cmd_setprogress(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Фармоиш ёфт нашуд.")
 
 async def cmd_askreview(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id not in ADMIN_IDS: return
+    if not await admin_only(update): return
     if not context.args:
         await update.message.reply_text("Истифода: /askreview SM-1234")
         return
@@ -838,7 +910,14 @@ def main():
         fallbacks=[],
     )
 
+    # Сабти командаҳои асосӣ ва админӣ
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("menu", start))
+    application.add_handler(CommandHandler("stats", cmd_stats))
+    application.add_handler(CommandHandler("broadcast", cmd_broadcast))
+    application.add_handler(CommandHandler("booked", cmd_booked))
+    application.add_handler(CommandHandler("freedate", cmd_freedate))
+    application.add_handler(CommandHandler("status", cmd_status))
     application.add_handler(CommandHandler("addpromo", cmd_addpromo))
     application.add_handler(CommandHandler("setprogress", cmd_setprogress))
     application.add_handler(CommandHandler("askreview", cmd_askreview))
