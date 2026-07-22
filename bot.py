@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v8 Master)
+SIMO.MEDIA — Telegram bot (нусхаи касбии v9 Master)
 Ду забон, FSM, Календари интерактивӣ, Прогресс-бари фармоиш,
-PDF Шартнома ва Чек бо забони тоҷикӣ (DejaVuSans font),
+PDF Шартнома ва Чек бо забони тоҷикӣ (DejaVuSans font - SSL/CDN Fixed),
 Системаи Промокодҳо, Ҷамъоварии худкори тавсифҳо ва Хизматрасониҳо.
 
 Барои иҷро:
@@ -14,6 +14,7 @@ PDF Шартнома ва Чек бо забони тоҷикӣ (DejaVuSans font
 import os
 import re
 import io
+import ssl
 import random
 import pickle
 import logging
@@ -30,7 +31,6 @@ from telegram.ext import (
     MessageHandler,
     ConversationHandler,
     PicklePersistence,
-    BasePersistence,
     filters,
 )
 from telegram.constants import ChatAction
@@ -47,29 +47,44 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ==================== ТАНЗИМИ ШРИФТ БАРОИ PDF ====================
+# ==================== ТАНЗИМИ БОЭЪТИМОДИ ШРИФТ БАРОИ PDF ====================
 
 FONT_NAME = "Helvetica"
-FONT_PATH = "DejaVuSans.ttf"
 
-def setup_pdf_font():
+def ensure_font_loaded():
     global FONT_NAME
-    if not os.path.exists(FONT_PATH):
-        try:
-            url = "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf"
-            urllib.request.urlretrieve(url, FONT_PATH)
-        except Exception as e:
-            logger.error(f"Шрифт боргирӣ нашуд: {e}")
-            
-    if os.path.exists(FONT_PATH):
-        try:
-            pdfmetrics.registerFont(TTFont("DejaVu", FONT_PATH))
-            FONT_NAME = "DejaVu"
-            logger.info("Шрифти DejaVuSans барои PDF сабт шуд.")
-        except Exception as e:
-            logger.error(f"Хатогии сабти шрифт: {e}")
+    font_filename = "DejaVuSans.ttf"
+    
+    if not os.path.exists(font_filename) or os.path.getsize(font_filename) == 0:
+        urls = [
+            "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf",
+            "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf",
+        ]
+        
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        for url in urls:
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, context=ctx, timeout=15) as response, open(font_filename, 'wb') as out_file:
+                    out_file.write(response.read())
+                if os.path.exists(font_filename) and os.path.getsize(font_filename) > 0:
+                    logger.info("Шрифти DejaVuSans бомуваффақият боргирӣ шуд.")
+                    break
+            except Exception as e:
+                logger.error(f"Хатогӣ дар боргирии шрифт аз {url}: {e}")
 
-setup_pdf_font()
+    if os.path.exists(font_filename) and os.path.getsize(font_filename) > 0:
+        try:
+            pdfmetrics.registerFont(TTFont("DejaVu", font_filename))
+            FONT_NAME = "DejaVu"
+            return "DejaVu"
+        except Exception as e:
+            logger.error(f"Хатогии сабти шрифт дар ReportLab: {e}")
+            
+    return "Helvetica"
 
 # ==================== ТАНЗИМОТИ АСОСӢ ====================
 
@@ -125,7 +140,7 @@ EXTRA_SERVICES_TEXTS = {
     "video_editing": "🎬 <b>Монтажи видео</b>\n━━━━━━━━━━━━━━━━━━\n\nВидеоҳои худро ба сатҳи нав бардоред!\nМо ҳама гуна видеоҳоро (Reels, TikTok, YouTube, Тӯйҳо) бо услуби касбӣ монтаж мекунем.",
 }
 
-# ==================== МАТНҲО ВА ПАКЕТҲОИ ПУРРА ====================
+# ==================== МАТНҲО ВА ПАКЕТҲО ====================
 
 BTN = {
     "tj": {
@@ -379,20 +394,21 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
 # ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF (Шартнома ва Чек) ====================
 
 def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_status):
+    font_name = ensure_font_loaded()
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     
-    p.setFont(FONT_NAME, 16)
+    p.setFont(font_name, 16)
     p.drawString(140, 750, "ШАРТНОМАИ РАСМИИ SIMO.MEDIA")
-    p.setFont(FONT_NAME, 10)
+    p.setFont(font_name, 10)
     p.drawString(180, 735, "Студияи наворбардорӣ ва таҳияи контент")
     p.line(50, 720, 550, 720)
     
-    p.setFont(FONT_NAME, 11)
+    p.setFont(font_name, 11)
     p.drawString(50, 680, f"Рақами фармоиш: {order_num}")
     p.drawString(50, 660, f"Таърихи сабт: {datetime.now().strftime('%d.%m.%Y')}")
     
-    p.setFont(FONT_NAME, 10)
+    p.setFont(font_name, 10)
     p.drawString(50, 620, f"Ному насаби мизоҷ: {name}")
     p.drawString(50, 600, f"Рақами телефон: {phone}")
     p.drawString(50, 580, f"Санаи тӯй: {date}")
@@ -403,14 +419,14 @@ def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_st
     p.drawString(50, 520, f"Ҳолати пешпардохт: {status_txt}")
     
     p.line(50, 500, 550, 500)
-    p.setFont(FONT_NAME, 11)
+    p.setFont(font_name, 11)
     p.drawString(50, 470, "Шартҳои шартнома:")
-    p.setFont(FONT_NAME, 9)
+    p.setFont(font_name, 9)
     p.drawString(50, 450, "1. Студия сифати баланди наворбардорӣ ва аксбардориро кафолат медиҳад.")
     p.drawString(50, 432, "2. Мӯҳлати супоридани мавод аз пакети интихобшуда вобаста аст (аз 7 то 30 рӯз).")
     p.drawString(50, 414, "3. SIMO.MEDIA барои нигоҳдории бехатарии маводҳои сабтшуда масъул аст.")
     
-    p.setFont(FONT_NAME, 10)
+    p.setFont(font_name, 10)
     p.drawString(50, 340, "Роҳбари студия: Шодовар Нуриддинов")
     p.drawString(350, 340, "Имзои мизоҷ: ____________")
     
@@ -714,7 +730,7 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE):
     discount = context.user_data.get("discount", 0)
     final_price = price - (price * discount / 100)
 
-    # Сохтани файли PDF Шартнома бо забони тоҷикӣ ва шрифти дақиқ
+    # Сохтани файли PDF бо шрифти боэътимод
     pdf_buffer = create_contract_pdf(order_number, name, phone, date, pkg.get("short", ""), final_price, "Пардохт шуд" if prepay else "Интизори пардохт")
 
     context.bot_data.setdefault("booked_dates", {})[date] = order_number
