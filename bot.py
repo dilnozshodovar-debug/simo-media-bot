@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбии v10 Final Master)
+SIMO.MEDIA — Telegram bot (нусхаи касбии v11 Master)
 Ду забон, FSM, Календари интерактивӣ, Прогресс-бари фармоиш,
-PDF Шартнома ва Чек бо забони тоҷикӣ (DejaVuSans), Командаҳои пурраи Админ,
-Системаи Промокодҳо, Ҷамъоварии худкори тавсифҳо ва Хизматрасониҳо.
+PDF Шартнома ва Чек бо шрифти тоҷикии Unicode (NotoSans/DejaVu),
+Командаҳои пурраи Админ, Системаи Промокодҳо ва Тавсифҳо.
 
 Барои иҷро:
 1) pip install -r requirements.txt
@@ -47,16 +47,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ==================== ТАНЗИМИ БОЭЪТИМОДИ ШРИФТ БАРОИ PDF ====================
+# ==================== ТАНЗИМИ БОЭЪТИМОДИ ШРИФТИ ТОҶИКӢ БАРОИ PDF ====================
 
 FONT_NAME = "Helvetica"
 
-def ensure_font_loaded():
+def init_pdf_font():
     global FONT_NAME
-    font_filename = "DejaVuSans.ttf"
+    font_filename = "TajikFont.ttf"
     
-    if not os.path.exists(font_filename) or os.path.getsize(font_filename) == 0:
+    if not os.path.exists(font_filename) or os.path.getsize(font_filename) < 10000:
         urls = [
+            "https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Regular.ttf",
             "https://cdn.jsdelivr.net/gh/dejavu-fonts/dejavu-fonts@master/ttf/DejaVuSans.ttf",
             "https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf",
         ]
@@ -67,24 +68,30 @@ def ensure_font_loaded():
         
         for url in urls:
             try:
+                logger.info(f"Кӯшиши боргирии шрифт аз: {url}")
                 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, context=ctx, timeout=15) as response, open(font_filename, 'wb') as out_file:
-                    out_file.write(response.read())
-                if os.path.exists(font_filename) and os.path.getsize(font_filename) > 0:
-                    logger.info("Шрифти DejaVuSans бомуваффақият боргирӣ шуд.")
-                    break
+                with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
+                    data = resp.read()
+                    if len(data) > 10000:
+                        with open(font_filename, 'wb') as f:
+                            f.write(data)
+                        logger.info("Шрифти тоҷикӣ бомуваффақият омода шуд!")
+                        break
             except Exception as e:
-                logger.error(f"Хатогӣ дар боргирии шрифт аз {url}: {e}")
+                logger.error(f"Хатогӣ ҳангоми боргирии шрифт аз {url}: {e}")
 
-    if os.path.exists(font_filename) and os.path.getsize(font_filename) > 0:
+    if os.path.exists(font_filename) and os.path.getsize(font_filename) > 10000:
         try:
-            pdfmetrics.registerFont(TTFont("DejaVu", font_filename))
-            FONT_NAME = "DejaVu"
-            return "DejaVu"
+            pdfmetrics.registerFont(TTFont("TajikFont", font_filename))
+            FONT_NAME = "TajikFont"
+            logger.info("Шрифти TajikFont (Unicode) ба ReportLab сабт гардид!")
         except Exception as e:
-            logger.error(f"Хатогии сабти шрифт дар ReportLab: {e}")
-            
-    return "Helvetica"
+            logger.error(f"Хатогӣ ҳангоми сабти шрифт дар ReportLab: {e}")
+    else:
+        logger.error("⚠️ ҲОЛАТИ ХАТАР: Шрифти Unicode пайдо нашуд!")
+
+# Роҳандозии шрифт ҳангоми боргирии скрипт
+init_pdf_font()
 
 # ==================== ТАНЗИМОТИ АСОСӢ ====================
 
@@ -394,21 +401,24 @@ def generate_calendar_keyboard(year: int, month: int, booked_dates: dict):
 # ==================== ГЕНЕРАТОРИ ФАЙЛИ PDF ====================
 
 def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_status):
-    font_name = ensure_font_loaded()
+    if FONT_NAME == "Helvetica":
+        init_pdf_font()
+        
+    font_to_use = FONT_NAME
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     
-    p.setFont(font_name, 16)
+    p.setFont(font_to_use, 16)
     p.drawString(140, 750, "ШАРТНОМАИ РАСМИИ SIMO.MEDIA")
-    p.setFont(font_name, 10)
+    p.setFont(font_to_use, 10)
     p.drawString(180, 735, "Студияи наворбардорӣ ва таҳияи контент")
     p.line(50, 720, 550, 720)
     
-    p.setFont(font_name, 11)
+    p.setFont(font_to_use, 11)
     p.drawString(50, 680, f"Рақами фармоиш: {order_num}")
     p.drawString(50, 660, f"Таърихи сабт: {datetime.now().strftime('%d.%m.%Y')}")
     
-    p.setFont(font_name, 10)
+    p.setFont(font_to_use, 10)
     p.drawString(50, 620, f"Ному насаби мизоҷ: {name}")
     p.drawString(50, 600, f"Рақами телефон: {phone}")
     p.drawString(50, 580, f"Санаи тӯй: {date}")
@@ -419,14 +429,14 @@ def create_contract_pdf(order_num, name, phone, date, pkg_name, price, prepay_st
     p.drawString(50, 520, f"Ҳолати пешпардохт: {status_txt}")
     
     p.line(50, 500, 550, 500)
-    p.setFont(font_name, 11)
+    p.setFont(font_to_use, 11)
     p.drawString(50, 470, "Шартҳои шартнома:")
-    p.setFont(font_name, 9)
+    p.setFont(font_to_use, 9)
     p.drawString(50, 450, "1. Студия сифати баланди наворбардорӣ ва аксбардориро кафолат медиҳад.")
     p.drawString(50, 432, "2. Мӯҳлати супоридани мавод аз пакети интихобшуда вобаста аст (аз 7 то 30 рӯз).")
     p.drawString(50, 414, "3. SIMO.MEDIA барои нигоҳдории бехатарии маводҳои сабтшуда масъул аст.")
     
-    p.setFont(font_name, 10)
+    p.setFont(font_to_use, 10)
     p.drawString(50, 340, "Роҳбари студия: Шодовар Нуриддинов")
     p.drawString(350, 340, "Имзои мизоҷ: ____________")
     
