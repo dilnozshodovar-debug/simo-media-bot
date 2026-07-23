@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи мукаммали v17 Redis Master)
-- Пайвасти худкор бо Пойгоҳи Абрии Redis (Беҳамто дар бехатарии маълумот)
-- Сабти худкори омор ба Redis ҳар 60 сония ва ҳангоми ҳар як фармоиш
+SIMO.MEDIA — Telegram bot (нусхаи мукаммали v18 Redis & CRM Master)
+- Пайвасти худкор бо Пойгоҳи Абрии Redis (Бехатарии 100% омор ва маълумот)
+- Бақайдгирии мизоҷон ва Кабинети Шахсӣ бо PIN-код
 - Имзои Электронии Рақамӣ (Digital Signature) дар PDF
 - Календари озода ва саҳеҳ
 - Тамоми командаҳои Админ: /stats, /status, /setprogress, /booked, /freedate, /broadcast, /addpromo
@@ -15,9 +15,9 @@ import random
 import pickle
 import logging
 import calendar
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -50,7 +50,15 @@ logger = logging.getLogger(__name__)
 
 # ==================== ТАНЗИМОТИ REDIS ВА ПАЙГИРИИ ХОТИРА ====================
 
-REDIS_URL = os.environ.get("REDIS_URL")
+REDIS_URL = os.environ.get("REDIS_URL") or os.environ.get("REDIS_PRIVATE_URL")
+
+def get_redis_connection():
+    if REDIS_AVAILABLE and REDIS_URL:
+        try:
+            return redis.from_url(REDIS_URL, decode_responses=True)
+        except Exception as e:
+            logger.error(f"Хато дар пайвасти Redis: {e}")
+    return None
 
 def get_persistence_path():
     if os.path.exists("/data") and os.access("/data", os.W_OK):
@@ -76,7 +84,6 @@ def sync_to_redis(bot_data_dict):
         try:
             r = redis.from_url(REDIS_URL)
             r.set("simo_bot_data", pickle.dumps(dict(bot_data_dict)))
-            logger.info("💾 Маълумот ба Redis сабт шуд.")
         except Exception as e:
             logger.error(f"Хато дар сабт ба Redis: {e}")
 
@@ -149,6 +156,7 @@ EXTRA_SERVICES_TEXTS = {
 BTN = {
     "tj": {
         "urgent": "🔥 Фармоиши фаврӣ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
+        "cabinet": "👤 Кабинети шахсӣ",
         "extra_services": "🎬 Хизматрасониҳои иловагӣ", "reviews": "⭐ Тавсифҳо", "stats": "📊 Дар рақамҳо",
         "why": "✨ Чаро маҳз мо?", "faq": "❓ FAQ", "about": "ℹ️ Дар бораи мо", "contact": "📞 Тамос",
         "availability": "📅 Санҷиши сана", "track": "📋 Пайгирии фармоиш",
@@ -159,6 +167,7 @@ BTN = {
     },
     "ru": {
         "urgent": "🔥 Быстрый заказ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
+        "cabinet": "👤 Личный кабинет",
         "extra_services": "🎬 Доп. услуги SIMO.MEDIA", "reviews": "⭐ Отзывы", "stats": "📊 В цифрах",
         "why": "✨ Почему мы?", "faq": "❓ FAQ", "about": "ℹ️ О нас", "contact": "📞 Контакты",
         "availability": "📅 Проверить дату", "track": "📋 Отследить заказ",
@@ -180,14 +189,6 @@ TEXT = {
         "ru": ("🎥 <b>SIMO.MEDIA</b>\n<i>✨ Превращаем воспоминания в вечные фильмы ✨</i>\n"
                "━━━━━━━━━━━━━━━━━━\n\n🤍 Добро пожаловать!\n\n"
                "👇 Пожалуйста, выберите один из разделов в меню ниже:"),
-    },
-    "stats": {
-        "tj": ("📊 <b>SIMO.MEDIA ДАР РАҚАМҲО</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-               "💍 <b>500+</b> тӯйи сабтшуда\n📅 <b>3+</b> сол таҷриба\n"
-               "⭐ <b>4.9/5</b> баҳои муштариён\n🎬 <b>100%</b> фармоишҳои саривақт супоридашуда"),
-        "ru": ("📊 <b>SIMO.MEDIA В ЦИФРАХ</b>\n━━━━━━━━━━━━━━━━━━\n\n"
-               "💍 <b>500+</b> отснятых свадеб\n📅 <b>3+</b> года опыта\n"
-               "⭐ <b>4.9/5</b> оценка клиентов\n🎬 <b>100%</b> заказов сдано вовремя"),
     },
     "about": {
         "tj": ("ℹ️ <b>Дар бораи SIMO.MEDIA</b>\n━━━━━━━━━━━━━━━━━━\n\n"
@@ -260,9 +261,6 @@ ASK_NAME, ASK_PHONE, ASK_DATE, PAYMENT_CHOICE, ASK_RECEIPT, CONFIRM, ASK_PROMO =
 
 def get_lang(context: ContextTypes.DEFAULT_TYPE) -> str:
     return context.user_data.get("lang", "tj")
-
-def t(key: str, lang: str) -> str:
-    return TEXT[key][lang]
 
 def validate_phone(text: str) -> bool:
     digits = re.sub(r"[^\d]", "", text)
@@ -415,8 +413,8 @@ def main_menu_kb(lang: str):
     b = BTN[lang]
     kb = [
         [InlineKeyboardButton(b["urgent"], callback_data="menu_prices")],
-        [InlineKeyboardButton(b["prices"], callback_data="menu_prices"), InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio")],
-        [InlineKeyboardButton(b["extra_services"], callback_data="menu_extra_services")],
+        [InlineKeyboardButton(b["cabinet"], callback_data="menu_cabinet"), InlineKeyboardButton(b["prices"], callback_data="menu_prices")],
+        [InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio"), InlineKeyboardButton(b["extra_services"], callback_data="menu_extra_services")],
         [InlineKeyboardButton(b["availability"], callback_data="menu_availability"), InlineKeyboardButton(b["track"], callback_data="menu_track")],
         [InlineKeyboardButton(b["reviews"], callback_data="rev_0"), InlineKeyboardButton(b["stats"], callback_data="menu_stats")],
         [InlineKeyboardButton(b["why"], callback_data="menu_why"), InlineKeyboardButton(b["faq"], callback_data="menu_faq")],
@@ -460,31 +458,121 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(context)
     user = update.effective_user
     context.bot_data.setdefault("all_users", {})[user.id] = {"name": user.full_name, "username": user.username}
+    
+    r = get_redis_connection()
+    if r:
+        r.sadd("bot_users", user.id)
+    
     sync_to_redis(context.bot_data)
 
     try:
         await update.message.reply_photo(
             photo=WELCOME_IMAGE_URL,
-            caption=t("welcome", lang),
+            caption=TEXT["welcome"][lang],
             reply_markup=main_menu_kb(lang),
             parse_mode="HTML",
         )
     except Exception:
-        await update.message.reply_text(t("welcome", lang), reply_markup=main_menu_kb(lang), parse_mode="HTML")
+        await update.message.reply_text(TEXT["welcome"][lang], reply_markup=main_menu_kb(lang), parse_mode="HTML")
+
+# ==================== КАБИНЕТИ ШАХСӢ ВА РЕГИСТРАЦИЯ ====================
+
+async def show_cabinet(query_or_message, context: ContextTypes.DEFAULT_TYPE, user_id: int, lang: str):
+    r = get_redis_connection()
+    is_registered = r.hget(f"user:{user_id}", "is_registered") if r else None
+
+    if is_registered == "true":
+        phone = r.hget(f"user:{user_id}", "phone")
+        pin = r.hget(f"user:{user_id}", "pin")
+        orders = r.hget(f"user:{user_id}", "orders") or "Фармоиши фаъол нест"
+        status = r.hget(f"user:{user_id}", "status") or "Аъзои фаъоли SIMO.MEDIA"
+
+        text = (
+            f"👤 <b>КАБИНЕТИ ШАХСИИ МИЗОҶ (SIMO.MEDIA)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+            f"🆔 Идентификатор: <code>#SIMO-{user_id}</code>\n"
+            f"📱 Телефон: <b>{phone}</b>\n"
+            f"🔑 PIN-коди амниятӣ: <b>{pin}</b>\n\n"
+            f"🎬 <b>Статуси фармоиш:</b> {status}\n"
+            f"📄 <b>Тафсилот:</b> {orders}\n"
+        )
+        if hasattr(query_or_message, "edit_message_caption"):
+            await query_or_message.edit_message_caption(caption=text, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        else:
+            await query_or_message.reply_text(text, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+    else:
+        btn = KeyboardButton(text="📱 Фиристодани рақами телефон", request_contact=True)
+        kb = ReplyKeyboardMarkup([[btn]], resize_keyboard=True, one_time_keyboard=True)
+        
+        msg_text = (
+            "🔒 <b>Барои кушодани Кабинети Шахсӣ сабти ном лозим аст.</b>\n\n"
+            "Лутфан тугмаи зеринро зер кунед, то рақами телефони шумо бехатар тасдиқ шавад:"
+        )
+        if hasattr(query_or_message, "message"):
+            await query_or_message.message.reply_text(msg_text, reply_markup=kb, parse_mode="HTML")
+        else:
+            await query_or_message.reply_text(msg_text, reply_markup=kb, parse_mode="HTML")
+
+async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    contact = update.message.contact
+    lang = get_lang(context)
+    
+    if contact:
+        phone_number = contact.phone_number
+        pin_code = str(random.randint(1000, 9999))
+        
+        r = get_redis_connection()
+        if r:
+            r.hset(f"user:{user_id}", mapping={
+                "phone": phone_number,
+                "pin": pin_code,
+                "is_registered": "true",
+                "status": "Аъзои фаъоли SIMO.MEDIA"
+            })
+            r.sadd("bot_users", user_id)
+
+        context.bot_data.setdefault("all_users", {})[user_id] = {
+            "name": update.effective_user.full_name,
+            "phone": phone_number
+        }
+        sync_to_redis(context.bot_data)
+
+        await update.message.reply_text(
+            f"🎉 <b>Табрик! Кабинети шахсии шумо кушода шуд.</b>\n\n"
+            f"📱 Рақами шумо: <b>{phone_number}</b>\n"
+            f"🔑 PIN-коди шахсии шумо: <b>{pin_code}</b>\n\n"
+            f"Акнун шумо метавонед ҳама вақт тавассути тугмаи «👤 Кабинети шахсӣ» статуси фармоишҳо ва шартномаҳои худро бинед!",
+            parse_mode="HTML"
+        )
+        
+        # Намоиши дубораи менюи асосӣ
+        try:
+            await update.message.reply_photo(
+                photo=WELCOME_IMAGE_URL,
+                caption=TEXT["welcome"][lang],
+                reply_markup=main_menu_kb(lang),
+                parse_mode="HTML",
+            )
+        except Exception:
+            await update.message.reply_text(TEXT["welcome"][lang], reply_markup=main_menu_kb(lang), parse_mode="HTML")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
     lang = get_lang(context)
+    user_id = update.effective_user.id
 
     if data == "toggle_lang":
         new_lang = "ru" if lang == "tj" else "tj"
         context.user_data["lang"] = new_lang
-        await query.edit_message_caption(caption=t("welcome", new_lang), reply_markup=main_menu_kb(new_lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["welcome"][new_lang], reply_markup=main_menu_kb(new_lang), parse_mode="HTML")
 
     elif data == "menu_main":
-        await query.edit_message_caption(caption=t("welcome", lang), reply_markup=main_menu_kb(lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["welcome"][lang], reply_markup=main_menu_kb(lang), parse_mode="HTML")
+
+    elif data == "menu_cabinet":
+        await show_cabinet(query, context, user_id, lang)
 
     elif data == "menu_extra_services":
         await query.edit_message_caption(caption="🎬 <b>Хизматрасониҳои иловагии SIMO.MEDIA</b>\n\nЯке аз бахшҳоро интихоб кунед:", reply_markup=extra_services_kb(lang), parse_mode="HTML")
@@ -502,7 +590,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_caption(caption=f"✅ <b>Фармоиши шумо қабул шуд!</b>\n\nБарои тасдиқ бо мо дар тамос шавед:\n📞 {CONTACT_PHONE_DISPLAY}", reply_markup=back_to_main_kb(lang), parse_mode="HTML")
 
     elif data == "menu_prices":
-        await query.edit_message_caption(caption=t("prices_title", lang), reply_markup=prices_menu_kb(lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["prices_title"][lang], reply_markup=prices_menu_kb(lang), parse_mode="HTML")
 
     elif data.startswith("pkg_"):
         pkg_key = data[len("pkg_"):]
@@ -535,31 +623,43 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data == "menu_track":
         context.user_data["awaiting"] = "track"
-        await query.edit_message_caption(caption=t("ask_track_number", lang), reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["ask_track_number"][lang], reply_markup=back_to_main_kb(lang), parse_mode="HTML")
 
     elif data == "menu_stats":
-        await query.edit_message_caption(caption=t("stats", lang), reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        r = get_redis_connection()
+        all_users = r.scard("bot_users") if r else len(context.bot_data.get("all_users", {}))
+        orders_cnt = r.get("total_orders") if (r and r.get("total_orders")) else len(context.bot_data.get("orders", {}))
+        
+        stats_text = (
+            f"📊 <b>SIMO.MEDIA ДАР РАҚАМҲО</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+            f"👥 Корбарони фаъол: <b>{all_users if all_users > 0 else 1}</b>\n"
+            f"💍 <b>{500 + int(orders_cnt)}</b> тӯйи сабтшуда\n"
+            f"📅 <b>3+</b> сол таҷриба\n"
+            f"⭐ <b>4.9/5</b> баҳои муштариён\n"
+            f"🎬 <b>100%</b> фармоишҳои саривақт супоридашуда"
+        )
+        await query.edit_message_caption(caption=stats_text, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
 
     elif data == "menu_about":
-        await query.edit_message_caption(caption=t("about", lang), reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["about"][lang], reply_markup=back_to_main_kb(lang), parse_mode="HTML")
 
     elif data == "menu_why":
-        await query.edit_message_caption(caption=t("why", lang), reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["why"][lang], reply_markup=back_to_main_kb(lang), parse_mode="HTML")
 
     elif data == "menu_faq":
-        await query.edit_message_caption(caption=t("faq", lang), reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["faq"][lang], reply_markup=back_to_main_kb(lang), parse_mode="HTML")
 
     elif data == "menu_contact":
-        await query.edit_message_caption(caption=t("contact", lang), reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+        await query.edit_message_caption(caption=TEXT["contact"][lang], reply_markup=back_to_main_kb(lang), parse_mode="HTML")
 
     elif data.startswith("rev_"):
         index = int(data[len("rev_"):])
         custom_revs = context.bot_data.get("custom_reviews", [])
         all_revs = DEFAULT_REVIEWS + custom_revs
         total = len(all_revs)
-        r = all_revs[index % total]
+        r_rev = all_revs[index % total]
         
-        text = f"⭐ <b>ТАВСИФҲОИ МУШТАРИЁН</b> ({index + 1}/{total})\n━━━━━━━━━━━━━━━━━━\n\n{r.get('stars', '⭐⭐⭐⭐⭐')}\n<i>«{r.get(lang, r.get('tj', ''))}»</i>\n\n— <b>{r['name']}</b>"
+        text = f"⭐ <b>ТАВСИФҲОИ МУШТАРИЁН</b> ({index + 1}/{total})\n━━━━━━━━━━━━━━━━━━\n\n{r_rev.get('stars', '⭐⭐⭐⭐⭐')}\n<i>«{r_rev.get(lang, r_rev.get('tj', ''))}»</i>\n\n— <b>{r_rev['name']}</b>"
         
         nav = [
             InlineKeyboardButton("⬅️ Қаблӣ", callback_data=f"rev_{(index - 1) % total}"),
@@ -578,7 +678,7 @@ async def handle_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         order = orders.get(order_num)
         
         if not order:
-            await update.message.reply_text(t("track_not_found", get_lang(context)), reply_markup=back_to_main_kb(get_lang(context)))
+            await update.message.reply_text(TEXT["track_not_found"][get_lang(context)], reply_markup=back_to_main_kb(get_lang(context)))
             return
 
         p1, p2, p3, p4 = order.get("p1", 100), order.get("p2", 0), order.get("p3", 0), order.get("p4", 0)
@@ -603,24 +703,24 @@ async def choose_package_start(update: Update, context: ContextTypes.DEFAULT_TYP
     lang = get_lang(context)
     pkg_key = query.data[len("choose_"):]
     context.user_data["order_pkg"] = PACKAGES.get(pkg_key)
-    await query.message.reply_text(t("ask_name", lang), parse_mode="HTML")
+    await query.message.reply_text(TEXT["ask_name"][lang], parse_mode="HTML")
     return ASK_NAME
 
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["order_name"] = update.message.text
-    await update.message.reply_text(t("ask_phone", get_lang(context)), parse_mode="HTML")
+    await update.message.reply_text(TEXT["ask_phone"][get_lang(context)], parse_mode="HTML")
     return ASK_PHONE
 
 async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not validate_phone(update.message.text):
-        await update.message.reply_text(t("phone_invalid", get_lang(context)))
+        await update.message.reply_text(TEXT["phone_invalid"][get_lang(context)])
         return ASK_PHONE
     context.user_data["order_phone"] = update.message.text
     
     now = datetime.now()
     booked = context.bot_data.get("booked_dates", {})
     kb = generate_calendar_keyboard(now.year, now.month, booked)
-    await update.message.reply_text(t("ask_date_cal", get_lang(context)), reply_markup=kb, parse_mode="HTML")
+    await update.message.reply_text(TEXT["ask_date_cal"][get_lang(context)], reply_markup=kb, parse_mode="HTML")
     return ASK_DATE
 
 async def date_calendar_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -643,7 +743,7 @@ async def date_calendar_handler(update: Update, context: ContextTypes.DEFAULT_TY
             [InlineKeyboardButton("✅ Ҳоло пардохт мекунам", callback_data="pay_now")],
             [InlineKeyboardButton("⏳ Дертар пардохт мекунам", callback_data="pay_later")]
         ])
-        await query.message.reply_text(f"📅 Санаи интихобшуда: <b>{selected_date}</b>\n\n" + t("ask_payment", get_lang(context)), reply_markup=kb, parse_mode="HTML")
+        await query.message.reply_text(f"📅 Санаи интихобшуда: <b>{selected_date}</b>\n\n" + TEXT["ask_payment"][get_lang(context)], reply_markup=kb, parse_mode="HTML")
         return PAYMENT_CHOICE
 
 async def promo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -666,7 +766,7 @@ async def process_promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("✅ Ҳоло пардохт мекунам", callback_data="pay_now")],
         [InlineKeyboardButton("⏳ Дертар пардохт мекунам", callback_data="pay_later")]
     ])
-    await update.message.reply_text(t("ask_payment", get_lang(context)), reply_markup=kb, parse_mode="HTML")
+    await update.message.reply_text(TEXT["ask_payment"][get_lang(context)], reply_markup=kb, parse_mode="HTML")
     return PAYMENT_CHOICE
 
 async def payment_choice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -674,10 +774,10 @@ async def payment_choice_handler(update: Update, context: ContextTypes.DEFAULT_T
     await query.answer()
     if query.data == "pay_now":
         kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Ман пардохт кардам", callback_data="pay_continue")]])
-        await query.message.reply_text(t("payment_link_text", get_lang(context)), reply_markup=kb, parse_mode="HTML")
+        await query.message.reply_text(TEXT["payment_link_text"][get_lang(context)], reply_markup=kb, parse_mode="HTML")
         return PAYMENT_CHOICE
     elif query.data == "pay_continue":
-        await query.message.reply_text(t("ask_receipt", get_lang(context)), parse_mode="HTML")
+        await query.message.reply_text(TEXT["ask_receipt"][get_lang(context)], parse_mode="HTML")
         return ASK_RECEIPT
     else:
         context.user_data["prepay"] = False
@@ -685,7 +785,7 @@ async def payment_choice_handler(update: Update, context: ContextTypes.DEFAULT_T
 
 async def receipt_photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["prepay"] = True
-    await update.message.reply_text(t("receipt_received", get_lang(context)))
+    await update.message.reply_text(TEXT["receipt_received"][get_lang(context)])
     return await finalize_order(update.message, context, update.effective_user.id)
 
 async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE, user_id=None):
@@ -710,12 +810,20 @@ async def finalize_order(message_obj, context: ContextTypes.DEFAULT_TYPE, user_i
         "p1": 100, "p2": 0, "p3": 0, "p4": 0
     }
 
-    # Сабти фаврӣ ба Redis
+    # Сабт ба Redis
+    r = get_redis_connection()
+    if r:
+        r.incr("total_orders")
+        r.sadd("booked_dates", date)
+        if user_id:
+            r.hset(f"user:{user_id}", "orders", f"Фармоиши #{order_number} ({pkg.get('short')}) - {date}")
+            r.hset(f"user:{user_id}", "status", "🆕 Қабул шуд")
+
     sync_to_redis(context.bot_data)
 
     await message_obj.reply_document(
         document=InputFile(pdf_buffer, filename=f"Contract_{order_number}.pdf"),
-        caption=f"{t('order_accepted', lang)}\n\n{t('order_thanks', lang)}",
+        caption=f"{TEXT['order_accepted'][lang]}\n\n{TEXT['order_thanks'][lang]}",
         parse_mode="HTML",
         reply_markup=back_to_main_kb(lang)
     )
@@ -761,16 +869,18 @@ async def cmd_importdb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await admin_only(update): return
-    all_users = context.bot_data.get("all_users", {})
-    orders = context.bot_data.get("orders", {})
-    booked = context.bot_data.get("booked_dates", {})
+    r = get_redis_connection()
+    all_users = r.scard("bot_users") if r else len(context.bot_data.get("all_users", {}))
+    orders = r.get("total_orders") if (r and r.get("total_orders")) else len(context.bot_data.get("orders", {}))
+    booked = r.scard("booked_dates") if r else len(context.bot_data.get("booked_dates", {}))
 
     lines = [
         "📊 <b>ОМОРИ ПУРРАИ БОТ (SIMO.MEDIA)</b>",
         "━━━━━━━━━━━━━━━━━━",
-        f"👥 Ҳамагӣ корбарони бот: <b>{len(all_users)}</b>",
-        f"🔖 Ҳамагӣ фармоишҳо: <b>{len(orders)}</b>",
-        f"📅 Санаҳои бандшуда: <b>{len(booked)}</b>",
+        f"👥 Ҳамагӣ корбарони бот: <b>{all_users}</b>",
+        f"🔖 Ҳамагӣ фармоишҳо: <b>{orders}</b>",
+        f"📅 Санаҳои бандшуда: <b>{booked}</b>",
+        "🔒 <i>Базаи бехатари Redis пайваст аст.</i>"
     ]
     await update.message.reply_text("\n".join(lines), parse_mode="HTML")
 
@@ -808,6 +918,9 @@ async def cmd_freedate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     booked = context.bot_data.get("booked_dates", {})
     if date_str in booked:
         del booked[date_str]
+        r = get_redis_connection()
+        if r:
+            r.srem("booked_dates", date_str)
         sync_to_redis(context.bot_data)
         await update.message.reply_text(f"✅ Санаи {date_str} озод карда шуд.")
     else:
@@ -897,107 +1010,15 @@ def main():
     application.add_handler(CommandHandler("addpromo", cmd_addpromo))
     application.add_handler(CommandHandler("setprogress", cmd_setprogress))
     
+    # Хэндлери сабти рақами телефон (Кабинети Шахсӣ)
+    application.add_handler(MessageHandler(filters.CONTACT, contact_handler))
+
     application.add_handler(order_conv)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_tracking))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    print(f"🤖 SIMO.MEDIA Master bot фаъол гашт...")
+    print("🤖 SIMO.MEDIA Master bot фаъол гашт...")
     application.run_polling()
 
 if __name__ == "__main__":
     main()
-    import os
-import redis
-
-# Пайвастшавӣ ба Redis дар Railway
-REDIS_URL = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
-r = redis.from_url(REDIS_URL, decode_responses=True)
-
-# Обработчики командаи /stats
-async def stats_command(update, context):
-    users_count = r.scard("bot_users") or 0
-    orders_count = r.get("total_orders") or 0
-    booked_dates = r.scard("booked_dates") or 0
-
-    text = (
-        f"📊 **ОМОРИ ПУРРАИ БОТ (SIMO.MEDIA)**\n\n"
-        f"👥 Ҳамагӣ корбарони бот: **{users_count}**\n"
-        f"🗞️ Ҳамагӣ фармоишҳо: **{orders_count}**\n"
-        f"📅 Санаҳои бандшуда: **{booked_dates}**"
-    )
-    await update.message.reply_text(text, parse_mode="Markdown")
-import os
-import random
-import redis
-from telegram import ReplyKeyboardMarkup, KeyboardButton, Update
-from telegram.ext import CallbackContext
-
-# Пайвастшавӣ ба Redis-и Railway
-REDIS_URL = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
-r = redis.from_url(REDIS_URL, decode_responses=True)
-
-# 1. ТАБЛИҒИ ТУГМАИ КАБИНЕТИ ШАХСӢ (Ҳангоми зер кардан)
-async def cabinet_handler(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    
-    # Тафтиш мекунем, ки мизоҷ сабти ном (регистрация) шудааст ё не
-    is_registered = r.hget(f"user:{user_id}", "is_registered")
-
-    if is_registered == "true":
-        # Агар мизоҷ аллакай сабти ном шуда бошад — маълумоташро нишон медиҳем
-        phone = r.hget(f"user:{user_id}", "phone")
-        pin = r.hget(f"user:{user_id}", "pin")
-        orders = r.hget(f"user:{user_id}", "orders") or "Фармоиши фаъол нест"
-        status = r.hget(f"user:{user_id}", "status") or "Интизории фармоиш"
-
-        text = (
-            f"👤 **КАБИНЕТИ ШАХСИИ МИЗОҶ (SIMO.MEDIA)**\n\n"
-            f"🆔 Идентификатор: `#SIMO-{user_id}`\n"
-            f"📱 Телефон: **{phone}**\n"
-            f"🔑 PIN-коди амниятӣ: **{pin}**\n\n"
-            f"🎬 **Статуси фармоиш:** {status}\n"
-            f"📄 **Тафсилот:** {orders}\n"
-        )
-        await update.message.reply_text(text, parse_mode="Markdown")
-    else:
-        # Агар сабти ном нашуда бошад — тугмаи фиристодани рақамро нишон медиҳем
-        button = KeyboardButton(text="📱 Фиристодани рақами телефон", request_contact=True)
-        keyboard = ReplyKeyboardMarkup([[button]], resize_keyboard=True, one_time_keyboard=True)
-        
-        await update.message.reply_text(
-            "🔒 **Барои кушодани Кабинети Шахсӣ сабти ном лозим аст.**\n\n"
-            "Лутфан тугмаи зеринро зер кунед, то рақами телефони шумо бехатар тасдиқ шавад:",
-            reply_markup=keyboard,
-            parse_mode="Markdown"
-        )
-
-# 2. ДАСТРАСӢ ВА САБТИ РАҚАМИ ТЕЛЕФОН + PIN-КОД
-async def contact_handler(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    contact = update.message.contact
-    
-    # Агар рақами телефон ояд
-    if contact:
-        phone_number = contact.phone_number
-        # Сохтани PIN-коди автоматикии 4-рақама
-        pin_code = str(random.randint(1000, 9999))
-        
-        # Сабт кардан дар Redis барои ҳамешагӣ
-        r.hset(f"user:{user_id}", mapping={
-            "phone": phone_number,
-            "pin": pin_code,
-            "is_registered": "true",
-            "status": "Аъзои фаъоли SIMO.MEDIA"
-        })
-        
-        # Инчунин илова кардани корбар ба омори ҳамагӣ корбарон
-        r.sadd("bot_users", user_id)
-
-        await update.message.reply_text(
-            f"🎉 **Табрик! Кабинети шахсии шумо кушода шуд.**\n\n"
-            f"📱 Рақами шумо: **{phone_number}**\n"
-            f"🔑 PIN-коди шахсии шумо: **{pin_code}**\n\n"
-            f"Акнун шумо метавонед ҳама вақт тавассути тугмаи «👤 Кабинети шахсӣ» статуси фармоишҳо ва шартномаҳои худро бинед!",
-            parse_mode="Markdown"
-        )
-
