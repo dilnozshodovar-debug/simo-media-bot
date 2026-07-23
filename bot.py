@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи мукаммали v18 Redis & CRM Master)
-- Пайвасти худкор бо Пойгоҳи Абрии Redis (Бехатарии 100% омор ва маълумот)
-- Бақайдгирии мизоҷон ва Кабинети Шахсӣ бо PIN-код
+SIMO.MEDIA — Telegram bot (нусхаи мукаммали v19 Master)
+- Бақайдгирии мизоҷон ва Кабинети Шахсӣ бо ҳимояи дуқабата (User Data + Redis)
 - Имзои Электронии Рақамӣ (Digital Signature) дар PDF
 - Календари озода ва саҳеҳ
-- Тамоми командаҳои Админ: /stats, /status, /setprogress, /booked, /freedate, /broadcast, /addpromo
+- Тамоми командаҳои Админ
 """
 
 import os
@@ -66,7 +65,6 @@ def get_persistence_path():
     return "bot_data.pkl"
 
 def restore_from_redis_if_available(filepath):
-    """Агар Redis фаъол бошад, оморро ҳангоми restart аз Redis хонда ба диск менависад"""
     if REDIS_AVAILABLE and REDIS_URL:
         try:
             r = redis.from_url(REDIS_URL)
@@ -79,7 +77,6 @@ def restore_from_redis_if_available(filepath):
             logger.error(f"Хато дар хондани Redis: {e}")
 
 def sync_to_redis(bot_data_dict):
-    """Сабти мустақими омор ба Redis"""
     if REDIS_AVAILABLE and REDIS_URL:
         try:
             r = redis.from_url(REDIS_URL)
@@ -88,7 +85,6 @@ def sync_to_redis(bot_data_dict):
             logger.error(f"Хато дар сабт ба Redis: {e}")
 
 async def redis_auto_sync_job(context: ContextTypes.DEFAULT_TYPE):
-    """Функсияи худкор, ки ҳар 1 дақиқа оморро ба Redis мефиристад"""
     sync_to_redis(context.bot_data)
 
 FONT_NAME = "Helvetica"
@@ -475,17 +471,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await update.message.reply_text(TEXT["welcome"][lang], reply_markup=main_menu_kb(lang), parse_mode="HTML")
 
-# ==================== КАБИНЕТИ ШАХСӢ ВА РЕГИСТРАЦИЯ ====================
+# ==================== КАБИНЕТИ ШАХСӢ ВА РЕГИСТРАЦИЯ (ИСЛОҲШУДА) ====================
 
 async def show_cabinet(query_or_message, context: ContextTypes.DEFAULT_TYPE, user_id: int, lang: str):
     r = get_redis_connection()
-    is_registered = r.hget(f"user:{user_id}", "is_registered") if r else None
+    
+    # Тафтиши дуқабата: ҳам аз user_data ва ҳам аз Redis
+    is_reg_local = context.user_data.get("is_registered")
+    is_reg_redis = r.hget(f"user:{user_id}", "is_registered") if r else None
 
-    if is_registered == "true":
-        phone = r.hget(f"user:{user_id}", "phone")
-        pin = r.hget(f"user:{user_id}", "pin")
-        orders = r.hget(f"user:{user_id}", "orders") or "Фармоиши фаъол нест"
-        status = r.hget(f"user:{user_id}", "status") or "Аъзои фаъоли SIMO.MEDIA"
+    if is_reg_local or is_reg_redis == "true":
+        phone = context.user_data.get("phone") or (r.hget(f"user:{user_id}", "phone") if r else "—")
+        pin = context.user_data.get("pin") or (r.hget(f"user:{user_id}", "pin") if r else "—")
+        orders = context.user_data.get("orders") or (r.hget(f"user:{user_id}", "orders") if r else "Фармоиши фаъол нест")
+        status = context.user_data.get("status") or (r.hget(f"user:{user_id}", "status") if r else "Аъзои фаъоли SIMO.MEDIA")
 
         text = (
             f"👤 <b>КАБИНЕТИ ШАХСИИ МИЗОҶ (SIMO.MEDIA)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
@@ -496,7 +495,10 @@ async def show_cabinet(query_or_message, context: ContextTypes.DEFAULT_TYPE, use
             f"📄 <b>Тафсилот:</b> {orders}\n"
         )
         if hasattr(query_or_message, "edit_message_caption"):
-            await query_or_message.edit_message_caption(caption=text, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+            try:
+                await query_or_message.edit_message_caption(caption=text, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
+            except Exception:
+                await query_or_message.message.reply_text(text, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
         else:
             await query_or_message.reply_text(text, reply_markup=back_to_main_kb(lang), parse_mode="HTML")
     else:
@@ -521,20 +523,26 @@ async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         phone_number = contact.phone_number
         pin_code = str(random.randint(1000, 9999))
         
+        # 1. Сабт дар хотираи дохилии бот (PicklePersistence)
+        context.user_data["is_registered"] = True
+        context.user_data["phone"] = phone_number
+        context.user_data["pin"] = pin_code
+        context.user_data["status"] = "Аъзои фаъоли SIMO.MEDIA"
+
+        # 2. Сабт дар Redis
         r = get_redis_connection()
         if r:
-            r.hset(f"user:{user_id}", mapping={
-                "phone": phone_number,
-                "pin": pin_code,
-                "is_registered": "true",
-                "status": "Аъзои фаъоли SIMO.MEDIA"
-            })
-            r.sadd("bot_users", user_id)
+            try:
+                r.hset(f"user:{user_id}", mapping={
+                    "phone": phone_number,
+                    "pin": pin_code,
+                    "is_registered": "true",
+                    "status": "Аъзои фаъоли SIMO.MEDIA"
+                })
+                r.sadd("bot_users", user_id)
+            except Exception as e:
+                logger.error(f"Redis set error: {e}")
 
-        context.bot_data.setdefault("all_users", {})[user_id] = {
-            "name": update.effective_user.full_name,
-            "phone": phone_number
-        }
         sync_to_redis(context.bot_data)
 
         await update.message.reply_text(
@@ -542,19 +550,9 @@ async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📱 Рақами шумо: <b>{phone_number}</b>\n"
             f"🔑 PIN-коди шахсии шумо: <b>{pin_code}</b>\n\n"
             f"Акнун шумо метавонед ҳама вақт тавассути тугмаи «👤 Кабинети шахсӣ» статуси фармоишҳо ва шартномаҳои худро бинед!",
+            reply_markup=back_to_main_kb(lang),
             parse_mode="HTML"
         )
-        
-        # Намоиши дубораи менюи асосӣ
-        try:
-            await update.message.reply_photo(
-                photo=WELCOME_IMAGE_URL,
-                caption=TEXT["welcome"][lang],
-                reply_markup=main_menu_kb(lang),
-                parse_mode="HTML",
-            )
-        except Exception:
-            await update.message.reply_text(TEXT["welcome"][lang], reply_markup=main_menu_kb(lang), parse_mode="HTML")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
