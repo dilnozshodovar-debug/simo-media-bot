@@ -906,3 +906,24 @@ def main():
 
 if __name__ == "__main__":
     main()
+    import os
+import redis
+
+# Пайвастшавӣ ба Redis дар Railway
+REDIS_URL = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
+r = redis.from_url(REDIS_URL, decode_responses=True)
+
+# Обработчики командаи /stats
+async def stats_command(update, context):
+    users_count = r.scard("bot_users") or 0
+    orders_count = r.get("total_orders") or 0
+    booked_dates = r.scard("booked_dates") or 0
+
+    text = (
+        f"📊 **ОМОРИ ПУРРАИ БОТ (SIMO.MEDIA)**\n\n"
+        f"👥 Ҳамагӣ корбарони бот: **{users_count}**\n"
+        f"🗞️ Ҳамагӣ фармоишҳо: **{orders_count}**\n"
+        f"📅 Санаҳои бандшуда: **{booked_dates}**"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
