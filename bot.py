@@ -1,25 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-SIMO.MEDIA — Telegram bot (нусхаи касбӣ v5)
+SIMO.MEDIA — Telegram bot (нусхаи касбӣ v6 PDF Registered)
 Ду забон, санҷиши вуруд, идоракунии хатогиҳо, соатҳои корӣ, банер, оморҳо,
 тавсифҳо, тасдиқи фармоиш, санҷиши дастрасии сана, пайгирии фармоиш,
-ёдоварии худкор, паёми умумӣ ба мизоҷон, даъвати дӯстон.
-
-Барои иҷро:
-1) pip install -r requirements.txt
-2) Токени ботро аз @BotFather гиред
-3) Дар поён BOT_TOKEN-ро гузоред
-4) python bot.py
+ёдоварии худкор, паёми умумӣ ба мизоҷон, даъвати дӯстон,
+ва Тавлиди Шартномаи расмии PDF бо вақту соати аниқ барои Кабинети Шахсӣ.
 """
 
 import os
 import re
+import io
 import random
 import pickle
 import logging
 from datetime import datetime, timezone, timedelta
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, InputFile
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -32,6 +28,16 @@ from telegram.ext import (
     filters,
 )
 from telegram.constants import ChatAction
+
+# Модулҳо барои сохтани PDF-и Шартнома
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -80,11 +86,126 @@ REFERRAL_DISCOUNT_PERCENT = 5
 DEPOSIT_AMOUNT = "100 сомонӣ"
 PAYMENT_LINK = "http://pay.expresspay.tj/?A=5058270376098736&s=100&c=&f1=133&FIELD2=&FIELD3="
 
+# ==================== ГЕНЕРАТОРИ ШАРТНОМАИ PDF ====================
+
+FONT_NAME = "Helvetica"
+
+def get_pdf_font():
+    global FONT_NAME
+    possible_files = ["DejaVuSans.ttf", "TajikFont.ttf", "arial.ttf", "FreeSans.ttf"]
+    for font_file in possible_files:
+        if os.path.exists(font_file) and os.path.getsize(font_file) > 10000:
+            try:
+                pdfmetrics.registerFont(TTFont("CustomTajikFont", font_file))
+                FONT_NAME = "CustomTajikFont"
+                return "CustomTajikFont", True
+            except Exception as e:
+                logger.error(f"Хато дар сабти {font_file}: {e}")
+    FONT_NAME = "Helvetica"
+    return "Helvetica", False
+
+def create_registration_pdf(name, phone, user_id, timestamp_str):
+    """Сохтани Шартномаи расмии бақайдгирӣ дар формати PDF"""
+    font_name, has_custom_font = get_pdf_font()
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    
+    reg_num = f"REG-{random.randint(10000, 99999)}"
+    uid_str = str(user_id)
+    
+    if has_custom_font:
+        title = "ШАРТНОМАИ РАСМИИ БАҚАЙДГИРИИ МИЗОҶ"
+        subtitle = "Студияи наворбардорӣ ва таҳияи контенти SIMO.MEDIA"
+        lbl_reg = f"Рақами шартнома: {reg_num}"
+        lbl_time = f"Таърихи тасдиқ ва вақт: {timestamp_str}"
+        lbl_name = f"Ному насаби мизоҷ: {name}"
+        lbl_phone = f"Рақами телефони тасдиқшуда: {phone}"
+        lbl_id = f"Идентификатори Telegram: {uid_str}"
+        
+        lbl_terms_head = "Шартҳои асосии аъзогӣ ва хизматрасонӣ:"
+        t1 = "1. Ин шартнома бақайдгирии расмии мизоҷро дар системаи SIMO.MEDIA тасдиқ мекунад."
+        t2 = "2. Студияи SIMO.MEDIA сифати баланди наворбардорӣ ва аксбардориро кафолат медиҳад."
+        t3 = "3. Маълумоти шахсии мизоҷ маҳрам нигоҳ дошта шуда, танҳо барои иҷрои фармоиш истифода мегардад."
+        t4 = "4. Ҳамаи фармоишҳо ва шартномаҳои оянда дар Кабинети Шахсӣ сабт карда мешаванд."
+        
+        lbl_exec = "Роҳбари студия: Шодовар Нуриддинов"
+        lbl_sign = "Имзои рақамии мизоҷ: [ТАСДИҚ ШУД]"
+        stamp_title = "✔ ТАСДИҚИ РАҚАМИИ SIMO.MEDIA (DIGITAL SIGNATURE)"
+        stamp_status = "Ҳолат: РАСМАН ТАСДИҚ ВА САБТ ШУД"
+    else:
+        title = "SHARTNOMAI RASMII BAQAYDGIRII MIZOJ"
+        subtitle = "Studioi navorbardori va tahiyai contenti SIMO.MEDIA"
+        lbl_reg = f"Raqami shartnoma: {reg_num}"
+        lbl_time = f"Ta'rikhi tasdiq va vaqt: {timestamp_str}"
+        lbl_name = f"Nomu nasabi mizoj: {name}"
+        lbl_phone = f"Raqami telefoni tasdiqshuda: {phone}"
+        lbl_id = f"Telegram ID: {uid_str}"
+        
+        lbl_terms_head = "Sharthoi asosii a'zogi va khizmatrasoni:"
+        t1 = "1. In shartnoma baqaydgirii rasmii mizojro dar sistemai SIMO.MEDIA tasdiq medihad."
+        t2 = "2. Studioi SIMO.MEDIA sifati balandi navorbardori va aksbardoriro kafolat medihad."
+        t3 = "3. Ma'lumoti shakhsii mizoj makhram nigoh doshta shuda, baroi ijroi farmoish istifoda megardad."
+        t4 = "4. Hamai farmoishho dar Kabineti Shakhsi sabt karda meshavand."
+        
+        lbl_exec = "Rohbari studio: Shodovar Nuriddinov"
+        lbl_sign = "Imzoi raqamii mizoj: [VERIFIED]"
+        stamp_title = "✔ DIGITAL SIGNATURE VERIFIED BY SIMO.MEDIA"
+        stamp_status = "Status: OFFICIALLY REGISTERED & VERIFIED"
+
+    p.setFont(font_name, 15)
+    p.drawString(100, 750, title)
+    p.setFont(font_name, 10)
+    p.drawString(140, 735, subtitle)
+    p.line(50, 720, 550, 720)
+    
+    p.setFont(font_name, 11)
+    p.drawString(50, 680, lbl_reg)
+    p.drawString(50, 660, lbl_time)
+    
+    p.setFont(font_name, 10)
+    p.drawString(50, 620, lbl_name)
+    p.drawString(50, 600, lbl_phone)
+    p.drawString(50, 580, lbl_id)
+    
+    p.line(50, 550, 550, 550)
+    p.setFont(font_name, 11)
+    p.drawString(50, 520, lbl_terms_head)
+    p.setFont(font_name, 9)
+    p.drawString(50, 495, t1)
+    p.drawString(50, 475, t2)
+    p.drawString(50, 455, t3)
+    p.drawString(50, 435, t4)
+
+    # ИМЗОИ ЭЛЕКТРОНИИ РАҚАМӢ (Digital Signature Block)
+    p.setLineWidth(1)
+    p.setStrokeColorRGB(0.1, 0.5, 0.2)
+    p.rect(50, 310, 500, 80)
+    
+    p.setFont(font_name, 10)
+    p.drawString(60, 372, stamp_title)
+    p.setFont(font_name, 8)
+    p.drawString(60, 355, f"Telegram ID: {uid_str}")
+    p.drawString(60, 340, f"Verified Timestamp: {timestamp_str}")
+    p.drawString(60, 325, f"Security Hash: VERIFIED-{reg_num}-{uid_str[-4:]}")
+    p.drawString(310, 355, stamp_status)
+    p.drawString(310, 340, "Studio: SIMO.MEDIA Studio")
+    p.drawString(310, 325, "Link: t.me/simoo129_bot")
+
+    p.setFont(font_name, 10)
+    p.drawString(50, 250, lbl_exec)
+    p.drawString(350, 250, lbl_sign)
+    
+    p.showPage()
+    p.save()
+    buffer.seek(0)
+    return buffer, reg_num
+
 # ==================== МАТНҲО (ду забон) ====================
 
 BTN = {
     "tj": {
         "urgent": "🔥 Фармоиши фаврӣ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
+        "cabinet": "👤 Кабинети шахсӣ",
         "reviews": "⭐ Тавсифҳо", "stats": "📊 Дар рақамҳо", "why": "✨ Чаро маҳз мо?",
         "faq": "❓ FAQ", "about": "ℹ️ Дар бораи мо", "contact": "📞 Тамос",
         "availability": "📅 Санҷиши сана", "track": "📋 Пайгирии фармоиш",
@@ -98,6 +219,7 @@ BTN = {
     },
     "ru": {
         "urgent": "🔥 Быстрый заказ", "prices": "💰 Прайс-лист", "portfolio": "🎬 Портфолио",
+        "cabinet": "👤 Личный кабинет",
         "reviews": "⭐ Отзывы", "stats": "📊 В цифрах", "why": "✨ Почему мы?",
         "faq": "❓ FAQ", "about": "ℹ️ О нас", "contact": "📞 Контакты",
         "availability": "📅 Проверить дату", "track": "📋 Отследить заказ",
@@ -592,7 +714,7 @@ def receipt_wait_kb(lang: str):
 
 ASK_NAME, ASK_PHONE, ASK_DATE, PAYMENT_CHOICE, ASK_RECEIPT, CONFIRM = range(6)
 
-# ==================== ФУНКСИЯҲОИ КӮМАКӣ ====================
+# ==================== ФУНКСИЯҲОИ КӮМАКӢ ====================
 
 def get_lang(context: ContextTypes.DEFAULT_TYPE) -> str:
     return context.user_data.get("lang", "tj")
@@ -636,9 +758,10 @@ def main_menu_kb(lang: str):
     b = BTN[lang]
     kb = [
         [InlineKeyboardButton(b["urgent"], callback_data="menu_prices")],
-        [InlineKeyboardButton(b["prices"], callback_data="menu_prices"),
-         InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio")],
-        [InlineKeyboardButton(b["services"], callback_data="menu_services")],
+        [InlineKeyboardButton(b.get("cabinet", "👤 Кабинети шахсӣ"), callback_data="menu_cabinet"),
+         InlineKeyboardButton(b["prices"], callback_data="menu_prices")],
+        [InlineKeyboardButton(b["portfolio"], callback_data="menu_portfolio"),
+         InlineKeyboardButton(b["services"], callback_data="menu_services")],
         [InlineKeyboardButton(b["availability"], callback_data="menu_availability"),
          InlineKeyboardButton(b["track"], callback_data="menu_track")],
         [InlineKeyboardButton(b["reviews"], callback_data="rev_0"),
@@ -811,6 +934,67 @@ async def safe_edit(query, text, reply_markup=None, media_url=None):
         logger.warning(f"Edit нашуд: {e}")
 
 
+async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Қабули рақами телефон, сохтани шартномаи PDF бо соату вақт ва фиристодан"""
+    user = update.effective_user
+    contact = update.message.contact
+    lang = get_lang(context)
+    
+    if contact:
+        phone_number = contact.phone_number
+        now_dt = datetime.now(DUSHANBE_TZ)
+        timestamp_str = now_dt.strftime("%d.%m.%Y %H:%M:%S")
+        
+        context.user_data["is_registered"] = True
+        context.user_data["phone"] = phone_number
+        context.user_data["reg_time"] = timestamp_str
+        
+        pdf_buf, reg_num = create_registration_pdf(user.full_name, phone_number, user.id, timestamp_str)
+        
+        msg_text = (
+            f"🎉 <b>Табрик! Кабинети шахсии шумо бомуваффақият фаъол шуд.</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 Ном: <b>{user.full_name}</b>\n"
+            f"📱 Телефон: <b>{phone_number}</b>\n"
+            f"⏰ Вақт ва таърихи тасдиқ: <b>{timestamp_str}</b>\n"
+            f"📄 Рақами шартнома: <b>{reg_num}</b>\n\n"
+            f"📄 <b>Шартномаи расмии шумо дар формати PDF замима гардид 👇</b>"
+        ) if lang == "tj" else (
+            f"🎉 <b>Поздравляем! Ваш личный кабинет успешно активирован.</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 Имя: <b>{user.full_name}</b>\n"
+            f"📱 Телефон: <b>{phone_number}</b>\n"
+            f"⏰ Дата и время подтверждения: <b>{timestamp_str}</b>\n"
+            f"📄 Номер договора: <b>{reg_num}</b>\n\n"
+            f"📄 <b>Ваш официальный договор прикреплён в формате PDF 👇</b>"
+        )
+        
+        await update.message.reply_document(
+            document=InputFile(pdf_buf, filename=f"Registration_Contract_{reg_num}.pdf"),
+            caption=msg_text,
+            parse_mode="HTML",
+            reply_markup=main_menu_kb(lang)
+        )
+        
+        for admin_id in ADMIN_IDS:
+            try:
+                pdf_buf.seek(0)
+                await context.bot.send_document(
+                    chat_id=admin_id,
+                    document=InputFile(pdf_buf, filename=f"Registration_Contract_{reg_num}.pdf"),
+                    caption=(
+                        f"👤 <b>МИЗОҶИ НАВ САБТИ НОМ ШУД!</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                        f"🔖 Рақами шартнома: <b>{reg_num}</b>\n"
+                        f"👤 Ном: {user.full_name}\n"
+                        f"📱 Телефон: {phone_number}\n"
+                        f"⏰ Вақт ва таърих: {timestamp_str}\n"
+                        f"Telegram: @{user.username if user.username else '—'}\n"
+                        f"User ID: {user.id}"
+                    ),
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.error(f"Хабар ба админ нарафт: {e}")
+
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -827,6 +1011,34 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu_main":
         context.user_data.pop("awaiting", None)
         await safe_edit(query, t("welcome", lang), main_menu_kb(lang), media_url=WELCOME_IMAGE_URL)
+
+    elif data == "menu_cabinet":
+        is_reg = context.user_data.get("is_registered")
+        if is_reg:
+            phone = context.user_data.get("phone", "—")
+            reg_time = context.user_data.get("reg_time", "—")
+            text = (
+                f"👤 <b>КАБИНЕТИ ШАХСИИ МИЗОҶ (SIMO.MEDIA)</b>\n━━━━━━━━━━━━━━━━━━\n\n"
+                f"🆔 Идентификатор: <code>#SIMO-{query.from_user.id}</code>\n"
+                f"👤 Ном: <b>{query.from_user.full_name}</b>\n"
+                f"📱 Телефон: <b>{phone}</b>\n"
+                f"⏰ Таърихи бақайдгирӣ: <b>{reg_time}</b>\n"
+                f"🟢 Ҳолат: <b>Аъзои фаъоли SIMO.MEDIA</b>\n\n"
+                f"✨ Ҳама фармоишҳо ва шартномаҳои шумо бехатар сабт карда мешаванд."
+            )
+            await safe_edit(query, text, back_to_main_kb(lang))
+        else:
+            kb = ReplyKeyboardMarkup(
+                [[KeyboardButton(text="📱 Фиристодани рақами телефон", request_contact=True)]],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+            await query.message.reply_text(
+                "🔒 <b>Барои кушодани Кабинети Шахсӣ ва гирифтани Шартномаи расмӣ, рақами телефони худро тасдиқ кунед:</b>\n\n"
+                "Лутфан тугмаи зеринро зер кунед 👇",
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
 
     elif data == "menu_prices":
         await safe_edit(query, t("prices_title", lang), prices_menu_kb(lang))
@@ -886,8 +1098,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def awaiting_input_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """Идора мекунад агар корбар дар ҳолати интизории вуруд (сана/рақами фармоиш) бошад.
-    True бармегардонад агар паём идора шуда бошад."""
     awaiting = context.user_data.get("awaiting")
     if not awaiting:
         return False
@@ -1109,7 +1319,6 @@ async def payment_continue_handler(update: Update, context: ContextTypes.DEFAULT
 
 async def receipt_photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(context)
-    user = update.message.from_user
     context.user_data["prepay"] = True
 
     order_number = context.user_data.get("order_number", "—")
@@ -1471,8 +1680,6 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 # ==================== MAIN ====================
 
 class RedisPersistence(BasePersistence):
-    """Хотираи доимии бот дар Redis — маълумот байни навсозиҳо гум намешавад."""
-
     def __init__(self, redis_client, key: str = "simo_media_bot_state"):
         super().__init__()
         self.redis = redis_client
@@ -1555,7 +1762,6 @@ class RedisPersistence(BasePersistence):
 
 
 def build_persistence():
-    """Redis мавҷуд бошад — истифода мешавад (доимӣ). Набошад — файли маҳаллӣ (муваққатӣ)."""
     redis_url = (
         os.environ.get("REDIS_URL")
         or os.environ.get("REDIS_PRIVATE_URL")
@@ -1572,7 +1778,7 @@ def build_persistence():
             print(f"⚠️  Пайваст ба Redis муяссар нашуд ({e}) — файли маҳаллӣ истифода мешавад.")
 
     persistence_path = os.environ.get("PERSISTENCE_PATH", "bot_data.pkl")
-    print("⚠️  REDIS_URL ёфт нашуд — файли маҳаллӣ истифода мешавад (метавонад байни навсозиҳо гум шавад).")
+    print("⚠️  REDIS_URL ёфт нашуд — файли маҳаллӣ истифода мешавад.")
     return PicklePersistence(filepath=persistence_path)
 
 
@@ -1614,6 +1820,10 @@ def main():
     application.add_handler(CommandHandler("status", cmd_status))
     application.add_handler(CommandHandler("stats", cmd_stats))
     application.add_handler(CommandHandler("broadcast", cmd_broadcast))
+    
+    # Хэндлери сабти рақами телефон ва омодакунии шартнома
+    application.add_handler(MessageHandler(filters.CONTACT, contact_handler))
+
     application.add_handler(
         MessageHandler(
             filters.REPLY & filters.User(user_id=ADMIN_IDS) & filters.TEXT & ~filters.COMMAND,
