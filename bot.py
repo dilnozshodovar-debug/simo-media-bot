@@ -926,4 +926,78 @@ async def stats_command(update, context):
         f"📅 Санаҳои бандшуда: **{booked_dates}**"
     )
     await update.message.reply_text(text, parse_mode="Markdown")
+import os
+import random
+import redis
+from telegram import ReplyKeyboardMarkup, KeyboardButton, Update
+from telegram.ext import CallbackContext
+
+# Пайвастшавӣ ба Redis-и Railway
+REDIS_URL = os.getenv("REDIS_URL") or os.getenv("REDIS_PRIVATE_URL")
+r = redis.from_url(REDIS_URL, decode_responses=True)
+
+# 1. ТАБЛИҒИ ТУГМАИ КАБИНЕТИ ШАХСӢ (Ҳангоми зер кардан)
+async def cabinet_handler(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    
+    # Тафтиш мекунем, ки мизоҷ сабти ном (регистрация) шудааст ё не
+    is_registered = r.hget(f"user:{user_id}", "is_registered")
+
+    if is_registered == "true":
+        # Агар мизоҷ аллакай сабти ном шуда бошад — маълумоташро нишон медиҳем
+        phone = r.hget(f"user:{user_id}", "phone")
+        pin = r.hget(f"user:{user_id}", "pin")
+        orders = r.hget(f"user:{user_id}", "orders") or "Фармоиши фаъол нест"
+        status = r.hget(f"user:{user_id}", "status") or "Интизории фармоиш"
+
+        text = (
+            f"👤 **КАБИНЕТИ ШАХСИИ МИЗОҶ (SIMO.MEDIA)**\n\n"
+            f"🆔 Идентификатор: `#SIMO-{user_id}`\n"
+            f"📱 Телефон: **{phone}**\n"
+            f"🔑 PIN-коди амниятӣ: **{pin}**\n\n"
+            f"🎬 **Статуси фармоиш:** {status}\n"
+            f"📄 **Тафсилот:** {orders}\n"
+        )
+        await update.message.reply_text(text, parse_mode="Markdown")
+    else:
+        # Агар сабти ном нашуда бошад — тугмаи фиристодани рақамро нишон медиҳем
+        button = KeyboardButton(text="📱 Фиристодани рақами телефон", request_contact=True)
+        keyboard = ReplyKeyboardMarkup([[button]], resize_keyboard=True, one_time_keyboard=True)
+        
+        await update.message.reply_text(
+            "🔒 **Барои кушодани Кабинети Шахсӣ сабти ном лозим аст.**\n\n"
+            "Лутфан тугмаи зеринро зер кунед, то рақами телефони шумо бехатар тасдиқ шавад:",
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+
+# 2. ДАСТРАСӢ ВА САБТИ РАҚАМИ ТЕЛЕФОН + PIN-КОД
+async def contact_handler(update: Update, context: CallbackContext):
+    user_id = update.effective_user.id
+    contact = update.message.contact
+    
+    # Агар рақами телефон ояд
+    if contact:
+        phone_number = contact.phone_number
+        # Сохтани PIN-коди автоматикии 4-рақама
+        pin_code = str(random.randint(1000, 9999))
+        
+        # Сабт кардан дар Redis барои ҳамешагӣ
+        r.hset(f"user:{user_id}", mapping={
+            "phone": phone_number,
+            "pin": pin_code,
+            "is_registered": "true",
+            "status": "Аъзои фаъоли SIMO.MEDIA"
+        })
+        
+        # Инчунин илова кардани корбар ба омори ҳамагӣ корбарон
+        r.sadd("bot_users", user_id)
+
+        await update.message.reply_text(
+            f"🎉 **Табрик! Кабинети шахсии шумо кушода шуд.**\n\n"
+            f"📱 Рақами шумо: **{phone_number}**\n"
+            f"🔑 PIN-коди шахсии шумо: **{pin_code}**\n\n"
+            f"Акнун шумо метавонед ҳама вақт тавассути тугмаи «👤 Кабинети шахсӣ» статуси фармоишҳо ва шартномаҳои худро бинед!",
+            parse_mode="Markdown"
+        )
 
